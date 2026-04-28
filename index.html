@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ระบบวิเคราะห์รายรับรายจ่าย — Money Lover Analytics</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          'sans': ['Sarabun', 'system-ui', 'sans-serif'],
+          'heading': ['Prompt', 'Sarabun', 'sans-serif'],
+        },
+        colors: {
+          income: { DEFAULT: '#10B981', light: '#D1FAE5', dark: '#047857' },
+          expense:{ DEFAULT: '#F43F5E', light: '#FFE4E6', dark: '#BE123C' },
+          brand:  { DEFAULT: '#4F46E5', light: '#EEF2FF', dark: '#3730A3' },
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  body { font-family: 'Sarabun', system-ui, sans-serif; }
+  h1,h2,h3,h4 { font-family: 'Prompt', 'Sarabun', sans-serif; }
+  .card { background:#fff; border:1px solid rgb(226 232 240); border-radius:14px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
+  .stat-up::before   { content:'▲ '; }
+  .stat-down::before { content:'▼ '; }
+  /* heatmap */
+  .heat-cell { width:14px; height:14px; border-radius:3px; display:inline-block; }
+  /* dropdown */
+  details > summary { list-style:none; cursor:pointer; }
+  details > summary::-webkit-details-marker { display:none; }
+  /* table */
+  .tbl th { font-weight:600; }
+  .tbl tbody tr:hover { background:#f8fafc; }
+  /* hide scrollbars on filter chips */
+  .scroll-x { overflow-x:auto; }
+  .scroll-x::-webkit-scrollbar { height:6px; }
+  .scroll-x::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px; }
+  /* drag area */
+  .drag-active { background:#EEF2FF !important; border-color:#4F46E5 !important; }
+  /* sticky filter shadow */
+  .sticky-filter { backdrop-filter: saturate(180%) blur(8px); background:rgba(248,250,252,.85); }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+<!-- ========== HEADER ========== -->
+<header class="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 text-white">
+  <div class="max-w-7xl mx-auto px-6 py-8">
+    <div class="flex items-start justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-3xl md:text-4xl font-bold tracking-tight">💰 ระบบวิเคราะห์รายรับรายจ่าย</h1>
+        <p class="text-indigo-100 mt-1">วิเคราะห์ข้อมูลทางการเงินจาก Money Lover แบบมืออาชีพ</p>
+        <p id="dataSummary" class="text-indigo-100 mt-2 text-sm hidden"></p>
+      </div>
+      <div class="flex gap-2">
+        <label id="uploadBtn" class="bg-white text-indigo-700 hover:bg-indigo-50 font-semibold px-5 py-2.5 rounded-lg cursor-pointer shadow-sm transition flex items-center gap-2">
+          📂 <span>อัปโหลดไฟล์ CSV</span>
+          <input type="file" id="fileInput" accept=".csv" class="hidden" />
+        </label>
+        <button id="reloadBtn" class="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2.5 rounded-lg hidden">🔄 โหลดใหม่</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ========== EMPTY STATE ========== -->
+<section id="emptyState" class="max-w-3xl mx-auto px-6 py-16">
+  <div id="dropZone" class="card p-10 text-center border-2 border-dashed border-slate-300 transition">
+    <div class="text-6xl mb-4">📊</div>
+    <h2 class="text-2xl font-bold text-slate-700 mb-2">เริ่มต้นใช้งาน</h2>
+    <p class="text-slate-500 mb-6">ลากไฟล์ CSV ลงที่นี่ หรือคลิกปุ่ม "อัปโหลดไฟล์ CSV" ด้านบน</p>
+    <div class="text-left bg-slate-50 rounded-lg p-5 text-sm text-slate-600 max-w-xl mx-auto">
+      <p class="font-semibold text-slate-700 mb-2">📌 วิธี Export จาก Money Lover:</p>
+      <ol class="list-decimal list-inside space-y-1">
+        <li>เปิดแอป Money Lover → ตั้งค่า → Export ข้อมูล</li>
+        <li>เลือกรูปแบบ CSV</li>
+        <li>ส่งไฟล์มาที่อีเมล/คอม แล้วอัปโหลดที่นี่</li>
+      </ol>
+      <p class="mt-3 text-xs text-slate-500">ข้อมูลของคุณจะถูกประมวลผลในเบราว์เซอร์เท่านั้น ไม่ถูกอัปโหลดไปไหน</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== MAIN APP ========== -->
+<main id="app" class="max-w-7xl mx-auto px-6 py-6 hidden">
+
+  <!-- Filters -->
+  <section class="sticky top-0 z-30 sticky-filter -mx-6 px-6 py-3 mb-6 border-b border-slate-200">
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-slate-600">📅</label>
+        <input id="dateFrom" type="date" class="border border-slate-300 rounded-md px-2 py-1 text-sm" />
+        <span class="text-slate-400">–</span>
+        <input id="dateTo" type="date" class="border border-slate-300 rounded-md px-2 py-1 text-sm" />
+      </div>
+      <div class="flex gap-1 flex-wrap">
+        <button data-preset="7"   class="preset-btn px-2 py-1 text-xs rounded-md bg-white border border-slate-300 hover:bg-indigo-50">7 วัน</button>
+        <button data-preset="30"  class="preset-btn px-2 py-1 text-xs rounded-md bg-white border border-slate-300 hover:bg-indigo-50">30 วัน</button>
+        <button data-preset="90"  class="preset-btn px-2 py-1 text-xs rounded-md bg-white border border-slate-300 hover:bg-indigo-50">3 เดือน</button>
+        <button data-preset="180" class="preset-btn px-2 py-1 text-xs rounded-md bg-white border border-slate-300 hover:bg-indigo-50">6 เดือน</button>
+        <button data-preset="ytd" class="preset-btn px-2 py-1 text-xs rounded-md bg-white border border-slate-300 hover:bg-indigo-50">ปีนี้</button>
+        <button data-preset="prev-year" class="preset-btn px-2 py-1 text-xs rounded-md bg-white border border-slate-300 hover:bg-indigo-50">ปีที่แล้ว</button>
+        <button data-preset="all" class="preset-btn px-2 py-1 text-xs rounded-md bg-white border border-slate-300 hover:bg-indigo-50">ทั้งหมด</button>
+      </div>
+
+      <details class="relative">
+        <summary class="px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-md hover:bg-indigo-50">
+          🏦 บัญชี (<span id="accountCount">ทั้งหมด</span>)
+        </summary>
+        <div id="accountList" class="absolute top-full mt-1 left-0 bg-white border border-slate-200 rounded-md shadow-lg p-3 max-h-72 overflow-y-auto z-40 min-w-[220px]"></div>
+      </details>
+
+      <details class="relative">
+        <summary class="px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-md hover:bg-indigo-50">
+          🏷️ หมวดหมู่ (<span id="categoryCount">ทั้งหมด</span>)
+        </summary>
+        <div class="absolute top-full mt-1 left-0 bg-white border border-slate-200 rounded-md shadow-lg p-3 max-h-72 overflow-y-auto z-40 min-w-[260px]">
+          <input id="categorySearch" placeholder="ค้นหา..." class="w-full mb-2 px-2 py-1 border border-slate-300 rounded text-sm" />
+          <div id="categoryList"></div>
+        </div>
+      </details>
+
+      <label class="flex items-center gap-2 text-sm text-slate-700 ml-auto">
+        <input type="checkbox" id="includeInternal" class="rounded" />
+        <span>รวมรายการโอนภายใน</span>
+      </label>
+      <label class="flex items-center gap-2 text-sm text-slate-700">
+        <input type="checkbox" id="includeCreditPay" class="rounded" />
+        <span>รวมจ่ายบัตรเครดิต</span>
+      </label>
+      <button id="resetBtn" class="text-xs text-indigo-600 hover:text-indigo-800 underline">รีเซ็ต</button>
+    </div>
+  </section>
+
+  <!-- KPI Cards -->
+  <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6" id="kpiGrid"></section>
+
+  <!-- Trend Chart -->
+  <section class="card p-5 mb-6">
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <h2 class="text-lg font-semibold">📈 แนวโน้มรายเดือน</h2>
+      <div class="text-xs text-slate-500">เส้นประ = ค่าเฉลี่ยเคลื่อนที่ 3 เดือน</div>
+    </div>
+    <div class="relative h-80"><canvas id="trendChart"></canvas></div>
+  </section>
+
+  <!-- Category + Top -->
+  <section class="grid lg:grid-cols-2 gap-6 mb-6">
+    <div class="card p-5">
+      <h2 class="text-lg font-semibold mb-3">🍩 สัดส่วนรายจ่ายตามหมวด</h2>
+      <div class="relative h-80"><canvas id="catDoughnut"></canvas></div>
+    </div>
+    <div class="card p-5">
+      <h2 class="text-lg font-semibold mb-3">🔝 Top 15 หมวดที่ใช้มากสุด</h2>
+      <div class="relative h-80"><canvas id="topCatBar"></canvas></div>
+    </div>
+  </section>
+
+  <!-- Account + DoW -->
+  <section class="grid lg:grid-cols-2 gap-6 mb-6">
+    <div class="card p-5">
+      <h2 class="text-lg font-semibold mb-3">🏦 รายจ่ายแยกตามบัญชี</h2>
+      <div class="relative h-72"><canvas id="accountBar"></canvas></div>
+    </div>
+    <div class="card p-5">
+      <h2 class="text-lg font-semibold mb-3">📅 รายจ่ายแยกตามวันในสัปดาห์</h2>
+      <div class="relative h-72"><canvas id="dowBar"></canvas></div>
+    </div>
+  </section>
+
+  <!-- Heatmap -->
+  <section class="card p-5 mb-6">
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <h2 class="text-lg font-semibold">🔥 Heatmap รายจ่ายรายวัน</h2>
+      <div class="flex items-center gap-1 text-xs text-slate-500">
+        <span>น้อย</span>
+        <span class="heat-cell" style="background:#FFE4E6"></span>
+        <span class="heat-cell" style="background:#FBA4AF"></span>
+        <span class="heat-cell" style="background:#F87171"></span>
+        <span class="heat-cell" style="background:#DC2626"></span>
+        <span class="heat-cell" style="background:#7F1D1D"></span>
+        <span>มาก</span>
+      </div>
+    </div>
+    <div id="heatmap" class="overflow-x-auto"></div>
+  </section>
+
+  <!-- Forecast & Burn rate -->
+  <section class="grid lg:grid-cols-3 gap-6 mb-6">
+    <div class="card p-5 lg:col-span-2">
+      <h2 class="text-lg font-semibold mb-3">🔮 พยากรณ์กระแสเงินสด (3 เดือนข้างหน้า)</h2>
+      <div class="relative h-72"><canvas id="forecastChart"></canvas></div>
+      <p id="forecastSummary" class="text-sm text-slate-600 mt-3"></p>
+    </div>
+    <div class="card p-5">
+      <h2 class="text-lg font-semibold mb-3">⏱️ Burn Rate</h2>
+      <div id="burnRate" class="space-y-3"></div>
+    </div>
+  </section>
+
+  <!-- Budget Tracking -->
+  <section class="card p-5 mb-6">
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <h2 class="text-lg font-semibold">🎯 ตั้งงบประมาณรายหมวด</h2>
+      <div class="text-xs text-slate-500">เทียบกับยอดใช้จริงในเดือนล่าสุดของช่วงที่เลือก · บันทึกอัตโนมัติ</div>
+    </div>
+    <div id="budgetList" class="grid md:grid-cols-2 gap-3"></div>
+  </section>
+
+  <!-- MoM Table -->
+  <section class="card p-5 mb-6">
+    <h2 class="text-lg font-semibold mb-3">📊 เปรียบเทียบ Month-over-Month (รายจ่าย)</h2>
+    <div class="overflow-x-auto">
+      <table class="tbl w-full text-sm" id="momTable"></table>
+    </div>
+  </section>
+
+  <!-- Events -->
+  <section class="card p-5 mb-6">
+    <h2 class="text-lg font-semibold mb-3">🎉 วิเคราะห์ Event</h2>
+    <div class="overflow-x-auto">
+      <table class="tbl w-full text-sm" id="eventTable"></table>
+    </div>
+  </section>
+
+  <!-- Insights -->
+  <section class="card p-5 mb-6 bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <h2 class="text-lg font-semibold mb-3">💡 Insights อัตโนมัติ</h2>
+    <ul id="insightsList" class="space-y-2 text-sm"></ul>
+  </section>
+
+  <!-- Transactions -->
+  <section class="card p-5 mb-6">
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <h2 class="text-lg font-semibold">📋 รายการธุรกรรม</h2>
+      <div class="flex gap-2">
+        <input id="txnSearch" placeholder="🔍 ค้นหาในหมายเหตุ/หมวด..." class="px-3 py-1.5 border border-slate-300 rounded text-sm w-64" />
+        <button id="exportCsv" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded">⬇ ดาวน์โหลด CSV</button>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="tbl w-full text-sm" id="txnTable"></table>
+    </div>
+    <div class="flex items-center justify-between mt-3 text-sm text-slate-600">
+      <div id="txnCount"></div>
+      <div class="flex gap-2 items-center">
+        <button id="prevPage" class="px-3 py-1 border border-slate-300 rounded hover:bg-slate-100">‹</button>
+        <span id="pageInfo"></span>
+        <button id="nextPage" class="px-3 py-1 border border-slate-300 rounded hover:bg-slate-100">›</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="text-center text-xs text-slate-400 py-6">
+    Money Lover Analytics · ประมวลผลในเบราว์เซอร์เท่านั้น · ข้อมูลไม่ถูกส่งออกนอกเครื่อง
+  </footer>
+</main>
+
+<script>
+/* =========================================================
+ *  STATE
+ * ========================================================= */
+const state = {
+  rows: [],
+  filtered: [],
+  filters: {
+    dateFrom: null, dateTo: null,
+    accounts: new Set(),
+    categories: new Set(),
+    includeInternal: false,
+    includeCreditPay: false,
+  },
+  budgets: JSON.parse(localStorage.getItem('budgets') || '{}'),
+  charts: {},
+  txnPage: 1,
+  txnPerPage: 50,
+  txnSort: { col: 'date', dir: 'desc' },
+  txnSearch: '',
+};
+
+const INTERNAL_CATEGORIES = new Set(['โอนเงินเข้า','โอนเงินออก']);
+const CREDITPAY_CATEGORIES = new Set(['จ่ายบัตรเครดิต','รับค่าชำระบัตรเครดิต']);
+
+const fmtTHB  = new Intl.NumberFormat('th-TH', { style:'currency', currency:'THB', maximumFractionDigits:0 });
+const fmtTHB2 = new Intl.NumberFormat('th-TH', { style:'currency', currency:'THB', maximumFractionDigits:2 });
+const fmtNum  = new Intl.NumberFormat('th-TH');
+const fmtPct  = (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+const fmtDate = (d) => new Intl.DateTimeFormat('th-TH', { dateStyle:'medium' }).format(d);
+
+/* =========================================================
+ *  CSV PARSER
+ * ========================================================= */
+function parseCSV(file) {
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (res) => {
+      const rows = res.data.map(r => {
+        const [d, m, y] = (r['Date'] || '').split('/');
+        const date = new Date(+y, +m - 1, +d);
+        const amt  = parseFloat(r['Amount']) || 0;
+        return {
+          id: r['ID'],
+          note: r['Note'] || '',
+          amount: amt,
+          category: (r['Category'] || '').trim(),
+          account: (r['Account'] || '').trim(),
+          currency: r['Currency'] || 'THB',
+          date,
+          dateStr: r['Date'],
+          event: (r['Event'] || '').trim(),
+          excludeReport: (r['Exclude Report'] || '').toLowerCase() === 'true',
+          isIncome: amt > 0,
+        };
+      }).filter(r => !isNaN(r.date.getTime()));
+      rows.sort((a, b) => b.date - a.date);
+      state.rows = rows;
+      onDataLoaded();
+    },
+    error: (err) => alert('โหลดไฟล์ผิดพลาด: ' + err.message),
+  });
+}
+
+/* =========================================================
+ *  FILTER PIPELINE
+ * ========================================================= */
+function applyFilters() {
+  const { dateFrom, dateTo, accounts, categories, includeInternal, includeCreditPay } = state.filters;
+  state.filtered = state.rows.filter(r => {
+    if (dateFrom && r.date < dateFrom) return false;
+    if (dateTo && r.date > dateTo) return false;
+    if (accounts.size  && !accounts.has(r.account))   return false;
+    if (categories.size && !categories.has(r.category)) return false;
+    if (!includeInternal  && INTERNAL_CATEGORIES.has(r.category))   return false;
+    if (!includeCreditPay && CREDITPAY_CATEGORIES.has(r.category))  return false;
+    if (!includeInternal  && r.excludeReport && !CREDITPAY_CATEGORIES.has(r.category)) return false;
+    return true;
+  });
+}
+
+/* =========================================================
+ *  AGGREGATIONS
+ * ========================================================= */
+function computeKPIs(rows) {
+  let income = 0, expense = 0, count = rows.length;
+  for (const r of rows) {
+    if (r.amount > 0) income  += r.amount;
+    else              expense += -r.amount;
+  }
+  const net = income - expense;
+  const savings = income > 0 ? (net / income) * 100 : 0;
+  const days = daysSpan(rows);
+  const avgDay = days > 0 ? expense / days : 0;
+  return { income, expense, net, savings, avgDay, count, days };
+}
+
+function daysSpan(rows) {
+  if (rows.length === 0) return 0;
+  const min = Math.min(...rows.map(r => r.date.getTime()));
+  const max = Math.max(...rows.map(r => r.date.getTime()));
+  return Math.max(1, Math.round((max - min) / 86400000) + 1);
+}
+
+function groupByMonth(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
+    if (!map.has(key)) map.set(key, { income: 0, expense: 0, net: 0, count: 0 });
+    const o = map.get(key);
+    if (r.amount > 0) o.income += r.amount;
+    else              o.expense += -r.amount;
+    o.net = o.income - o.expense;
+    o.count++;
+  }
+  return new Map([...map.entries()].sort());
+}
+
+function groupByCategory(rows, expenseOnly = true) {
+  const map = new Map();
+  for (const r of rows) {
+    if (expenseOnly && r.amount >= 0) continue;
+    const k = r.category || '(ไม่ระบุ)';
+    if (!map.has(k)) map.set(k, { sum: 0, count: 0 });
+    const o = map.get(k);
+    o.sum += Math.abs(r.amount);
+    o.count++;
+  }
+  return new Map([...map.entries()].sort((a, b) => b[1].sum - a[1].sum));
+}
+
+function groupByAccount(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    if (r.amount >= 0) continue;
+    const k = r.account || '(ไม่ระบุ)';
+    if (!map.has(k)) map.set(k, 0);
+    map.set(k, map.get(k) + Math.abs(r.amount));
+  }
+  return new Map([...map.entries()].sort((a, b) => b[1] - a[1]));
+}
+
+function groupByDayOfWeek(rows) {
+  const arr = [0, 0, 0, 0, 0, 0, 0];
+  const cnt = [0, 0, 0, 0, 0, 0, 0];
+  for (const r of rows) {
+    if (r.amount >= 0) continue;
+    const d = r.date.getDay();
+    arr[d] += Math.abs(r.amount);
+    cnt[d]++;
+  }
+  return { sums: arr, counts: cnt };
+}
+
+function groupByDay(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    if (r.amount >= 0) continue;
+    const k = r.date.toISOString().slice(0, 10);
+    if (!map.has(k)) map.set(k, { sum: 0, count: 0 });
+    const o = map.get(k);
+    o.sum += Math.abs(r.amount);
+    o.count++;
+  }
+  return map;
+}
+
+function movingAverage(values, n = 3) {
+  const out = [];
+  for (let i = 0; i < values.length; i++) {
+    const slice = values.slice(Math.max(0, i - n + 1), i + 1);
+    out.push(slice.reduce((a, b) => a + b, 0) / slice.length);
+  }
+  return out;
+}
+
+function linearRegression(ys) {
+  const n = ys.length;
+  if (n < 2) return { slope: 0, intercept: ys[0] || 0, rSquared: 0 };
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) { sx += i; sy += ys[i]; sxy += i * ys[i]; sxx += i * i; }
+  const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+  const intercept = (sy - slope * sx) / n;
+  let ssRes = 0, ssTot = 0;
+  const meanY = sy / n;
+  for (let i = 0; i < n; i++) {
+    const yhat = slope * i + intercept;
+    ssRes += (ys[i] - yhat) ** 2;
+    ssTot += (ys[i] - meanY) ** 2;
+  }
+  const rSquared = ssTot === 0 ? 0 : 1 - ssRes / ssTot;
+  const std = Math.sqrt(ssRes / Math.max(1, n - 2));
+  return { slope, intercept, rSquared, std };
+}
+
+function nextMonthKey(key) {
+  const [y, m] = key.split('-').map(Number);
+  const d = new Date(y, m - 1 + 1, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+/* =========================================================
+ *  RENDER — KPI
+ * ========================================================= */
+function renderKPIs() {
+  const k = computeKPIs(state.filtered);
+  const prev = priorPeriodKPIs();
+  const grid = document.getElementById('kpiGrid');
+  const cards = [
+    { title:'รายรับรวม',         val: fmtTHB.format(k.income),  delta: deltaPct(k.income, prev.income),   cls:'income',  emoji:'💚' },
+    { title:'รายจ่ายรวม',         val: fmtTHB.format(k.expense), delta: deltaPct(k.expense, prev.expense, true), cls:'expense', emoji:'💸' },
+    { title:'คงเหลือสุทธิ',       val: fmtTHB.format(k.net),     delta: deltaPct(k.net, prev.net),         cls: k.net >= 0 ? 'income' : 'expense', emoji: k.net >= 0 ? '📈' : '📉' },
+    { title:'อัตราการออม',        val: k.savings.toFixed(1)+'%', delta: deltaPct(k.savings, prev.savings), cls:'brand',   emoji:'🏦' },
+    { title:'ค่าใช้จ่ายเฉลี่ย/วัน', val: fmtTHB.format(k.avgDay),  delta: deltaPct(k.avgDay, prev.avgDay, true),   cls:'brand',   emoji:'📊' },
+    { title:'จำนวนรายการ',         val: fmtNum.format(k.count),   delta: deltaPct(k.count, prev.count),     cls:'brand',   emoji:'#' },
+  ];
+  grid.innerHTML = cards.map(c => {
+    const colorMap = { income:'text-income', expense:'text-expense', brand:'text-brand' };
+    const deltaCls = c.delta == null ? '' : (c.delta >= 0 ? 'stat-up text-income' : 'stat-down text-expense');
+    return `
+      <div class="card p-4">
+        <div class="flex items-center justify-between mb-1">
+          <div class="text-xs text-slate-500">${c.emoji} ${c.title}</div>
+        </div>
+        <div class="text-xl font-bold ${colorMap[c.cls] || ''}">${c.val}</div>
+        <div class="text-xs mt-1 ${deltaCls}">${c.delta == null ? 'ไม่มีข้อมูลเทียบ' : fmtPct(c.delta) + ' เทียบช่วงก่อน'}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function deltaPct(cur, prev, invertSign = false) {
+  if (prev == null || prev === 0 || isNaN(prev)) return null;
+  let d = ((cur - prev) / Math.abs(prev)) * 100;
+  if (invertSign) d = -d; // for expense: ลดลง = ดี → up arrow ควรเป็นลบ?
+  return d;
+}
+
+function priorPeriodKPIs() {
+  const { dateFrom, dateTo } = state.filters;
+  if (!dateFrom || !dateTo) return {};
+  const span = dateTo - dateFrom;
+  const prevTo = new Date(dateFrom.getTime() - 1);
+  const prevFrom = new Date(prevTo.getTime() - span);
+  const rows = state.rows.filter(r => {
+    if (r.date < prevFrom || r.date > prevTo) return false;
+    if (state.filters.accounts.size && !state.filters.accounts.has(r.account)) return false;
+    if (state.filters.categories.size && !state.filters.categories.has(r.category)) return false;
+    if (!state.filters.includeInternal && INTERNAL_CATEGORIES.has(r.category)) return false;
+    if (!state.filters.includeCreditPay && CREDITPAY_CATEGORIES.has(r.category)) return false;
+    if (!state.filters.includeInternal && r.excludeReport && !CREDITPAY_CATEGORIES.has(r.category)) return false;
+    return true;
+  });
+  return computeKPIs(rows);
+}
+
+/* =========================================================
+ *  RENDER — TREND
+ * ========================================================= */
+function renderTrendChart() {
+  const m = groupByMonth(state.filtered);
+  const labels = [...m.keys()];
+  const incomes = labels.map(k => m.get(k).income);
+  const expenses = labels.map(k => m.get(k).expense);
+  const nets = labels.map(k => m.get(k).net);
+  const ma = movingAverage(nets, 3);
+
+  const ctx = document.getElementById('trendChart');
+  const cfg = {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'รายรับ',   data: incomes,  borderColor:'#10B981', backgroundColor:'rgba(16,185,129,.1)', fill:true, tension:.35, pointRadius:3 },
+        { label:'รายจ่าย', data: expenses, borderColor:'#F43F5E', backgroundColor:'rgba(244,63,94,.1)',  fill:true, tension:.35, pointRadius:3 },
+        { label:'สุทธิ',    data: nets,     borderColor:'#4F46E5', backgroundColor:'transparent', tension:.35, pointRadius:3, borderWidth:2 },
+        { label:'MA-3 สุทธิ', data: ma,    borderColor:'#94A3B8', borderDash:[6,4], backgroundColor:'transparent', tension:.35, pointRadius:0, borderWidth:2 },
+      ]
+    },
+    options: chartOpts({ ySymbol:true })
+  };
+  renderChart('trend', ctx, cfg);
+}
+
+/* =========================================================
+ *  RENDER — CATEGORY (doughnut + topbar)
+ * ========================================================= */
+function renderCategoryDoughnut() {
+  const cats = groupByCategory(state.filtered);
+  const entries = [...cats.entries()];
+  const top = entries.slice(0, 10);
+  const other = entries.slice(10).reduce((s, e) => s + e[1].sum, 0);
+  const labels = top.map(e => e[0]).concat(other > 0 ? ['อื่นๆ'] : []);
+  const data = top.map(e => e[1].sum).concat(other > 0 ? [other] : []);
+  const colors = ['#4F46E5','#7C3AED','#EC4899','#F43F5E','#F97316','#F59E0B','#84CC16','#10B981','#06B6D4','#3B82F6','#94A3B8'];
+  renderChart('catDoughnut', document.getElementById('catDoughnut'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 2, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { family: 'Sarabun', size: 11 } } },
+        tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtTHB.format(c.parsed) + ' (' + (c.parsed / data.reduce((a, b) => a + b, 0) * 100).toFixed(1) + '%)' } }
+      }
+    }
+  });
+}
+
+function renderTopCatBar() {
+  const cats = groupByCategory(state.filtered);
+  const top = [...cats.entries()].slice(0, 15);
+  const labels = top.map(e => e[0]);
+  const data = top.map(e => e[1].sum);
+  renderChart('topCatBar', document.getElementById('topCatBar'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor:'#F43F5E', borderRadius:4 }] },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.x) } } },
+      scales: {
+        x: { ticks: { callback: (v) => abbrev(v) } },
+        y: { ticks: { font: { family: 'Sarabun', size: 11 } } }
+      }
+    }
+  });
+}
+
+/* =========================================================
+ *  RENDER — Account & DoW
+ * ========================================================= */
+function renderAccountBar() {
+  const m = groupByAccount(state.filtered);
+  const entries = [...m.entries()];
+  renderChart('accountBar', document.getElementById('accountBar'), {
+    type: 'bar',
+    data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor:'#4F46E5', borderRadius:4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.y) } } },
+      scales: { y: { ticks: { callback: (v) => abbrev(v) } }, x: { ticks: { font: { size: 10 } } } }
+    }
+  });
+}
+
+function renderDowBar() {
+  const { sums, counts } = groupByDayOfWeek(state.filtered);
+  const labels = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+  renderChart('dowBar', document.getElementById('dowBar'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: sums, backgroundColor:'#7C3AED', borderRadius:4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.y) + ' · ' + counts[c.dataIndex] + ' รายการ' } }
+      },
+      scales: { y: { ticks: { callback: (v) => abbrev(v) } } }
+    }
+  });
+}
+
+/* =========================================================
+ *  RENDER — HEATMAP
+ * ========================================================= */
+function renderHeatmap() {
+  const map = groupByDay(state.filtered);
+  const rows = state.filtered;
+  if (rows.length === 0) { document.getElementById('heatmap').innerHTML = ''; return; }
+  const minDate = new Date(Math.min(...rows.map(r => r.date.getTime())));
+  const maxDate = new Date(Math.max(...rows.map(r => r.date.getTime())));
+  const start = new Date(minDate); start.setDate(start.getDate() - start.getDay());
+  const end   = new Date(maxDate); end.setDate(end.getDate() + (6 - end.getDay()));
+
+  const sums = [...map.values()].map(v => v.sum).sort((a, b) => a - b);
+  const q = (p) => sums.length === 0 ? 0 : sums[Math.floor(sums.length * p)];
+  const t1 = q(.20), t2 = q(.45), t3 = q(.70), t4 = q(.90);
+  const colorOf = (v) => {
+    if (!v || v === 0) return '#F1F5F9';
+    if (v <= t1) return '#FFE4E6';
+    if (v <= t2) return '#FBA4AF';
+    if (v <= t3) return '#F87171';
+    if (v <= t4) return '#DC2626';
+    return '#7F1D1D';
+  };
+
+  const weeks = [];
+  let cur = new Date(start);
+  while (cur <= end) {
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const k = cur.toISOString().slice(0, 10);
+      const v = map.get(k);
+      week.push({ date: new Date(cur), key: k, sum: v ? v.sum : 0, count: v ? v.count : 0 });
+      cur.setDate(cur.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+
+  const dayLabels = ['','จ','','พ','','ศ',''];
+  const monthLabels = [];
+  let lastMonth = -1;
+  for (const w of weeks) {
+    const d = w[0].date;
+    if (d.getMonth() !== lastMonth) {
+      monthLabels.push(d.toLocaleDateString('th-TH', { month: 'short' }));
+      lastMonth = d.getMonth();
+    } else monthLabels.push('');
+  }
+
+  let html = '<div style="display:inline-flex;flex-direction:column;gap:2px;font-size:10px;line-height:1;color:#64748b;">';
+  html += '<div style="display:grid;grid-template-columns:repeat('+weeks.length+', 16px);gap:2px;padding-left:18px">';
+  html += monthLabels.map(m => '<div style="height:12px">'+m+'</div>').join('');
+  html += '</div>';
+  html += '<div style="display:flex;gap:2px;">';
+  html += '<div style="display:flex;flex-direction:column;gap:2px;width:16px;">' + dayLabels.map(l => '<div style="height:14px">'+l+'</div>').join('') + '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat('+weeks.length+', 14px);grid-auto-rows:14px;grid-auto-flow:column;gap:2px;">';
+  for (const w of weeks) {
+    for (const c of w) {
+      const inRange = c.date >= minDate && c.date <= maxDate;
+      const bg = inRange ? colorOf(c.sum) : 'transparent';
+      const tip = inRange
+        ? c.date.toLocaleDateString('th-TH', { dateStyle:'medium' }) + ': ' + fmtTHB.format(c.sum) + ' (' + c.count + ' รายการ)'
+        : '';
+      html += '<div class="heat-cell" style="background:'+bg+'" title="'+tip.replace(/"/g,'&quot;')+'"></div>';
+    }
+  }
+  html += '</div></div></div>';
+  document.getElementById('heatmap').innerHTML = html;
+}
+
+/* =========================================================
+ *  RENDER — FORECAST + BURN RATE
+ * ========================================================= */
+function renderForecast() {
+  const m = groupByMonth(state.filtered);
+  const keys = [...m.keys()];
+  if (keys.length < 2) {
+    renderChart('forecast', document.getElementById('forecastChart'), { type:'line', data:{ labels:[], datasets:[] }, options:{} });
+    document.getElementById('forecastSummary').textContent = 'ข้อมูลไม่พอสำหรับการพยากรณ์ (ต้องมีอย่างน้อย 2 เดือน)';
+    return;
+  }
+  const nets = keys.map(k => m.get(k).net);
+  const expenses = keys.map(k => m.get(k).expense);
+  const reg = linearRegression(nets);
+
+  const futureKeys = [];
+  let last = keys[keys.length - 1];
+  for (let i = 0; i < 3; i++) { last = nextMonthKey(last); futureKeys.push(last); }
+
+  const allLabels = keys.concat(futureKeys);
+  const histData  = nets.concat([null, null, null]);
+  const futureData = Array(keys.length).fill(null);
+  const futurePlus = Array(keys.length).fill(null);
+  const futureMinus = Array(keys.length).fill(null);
+  for (let i = 0; i < 3; i++) {
+    const x = keys.length + i;
+    const yhat = reg.slope * x + reg.intercept;
+    futureData.push(yhat);
+    futurePlus.push(yhat + reg.std);
+    futureMinus.push(yhat - reg.std);
+  }
+  futureData[keys.length - 1] = nets[nets.length - 1];
+  futurePlus[keys.length - 1] = nets[nets.length - 1];
+  futureMinus[keys.length - 1] = nets[nets.length - 1];
+
+  renderChart('forecast', document.getElementById('forecastChart'), {
+    type: 'line',
+    data: {
+      labels: allLabels,
+      datasets: [
+        { label:'ประวัติ (สุทธิ)', data: histData, borderColor:'#4F46E5', backgroundColor:'rgba(79,70,229,.1)', fill:false, tension:.35, pointRadius:3 },
+        { label:'พยากรณ์',         data: futureData, borderColor:'#F59E0B', borderDash:[5,5], backgroundColor:'transparent', tension:.35, pointRadius:4 },
+        { label:'+1σ', data: futurePlus,  borderColor:'rgba(245,158,11,.4)', backgroundColor:'rgba(245,158,11,.12)', fill:'+1', pointRadius:0, borderWidth:1 },
+        { label:'-1σ', data: futureMinus, borderColor:'rgba(245,158,11,.4)', backgroundColor:'transparent',         fill:false, pointRadius:0, borderWidth:1 },
+      ]
+    },
+    options: chartOpts({ ySymbol: true })
+  });
+
+  const totalForecast = (reg.slope * keys.length + reg.intercept) +
+                        (reg.slope * (keys.length + 1) + reg.intercept) +
+                        (reg.slope * (keys.length + 2) + reg.intercept);
+  const trend = reg.slope >= 0 ? 'เป็นบวก 📈' : 'เป็นลบ 📉';
+  document.getElementById('forecastSummary').innerHTML =
+    `แนวโน้มสุทธิ ${trend} (slope ≈ ${fmtTHB.format(reg.slope)}/เดือน, R² = ${reg.rSquared.toFixed(2)})  ·  ` +
+    `รวม 3 เดือนข้างหน้าคาดว่า ${fmtTHB.format(totalForecast)}`;
+
+  // Burn rate
+  const recent30 = state.filtered.filter(r => {
+    const ms = (Date.now() - r.date.getTime());
+    return ms >= 0 && ms <= 30 * 86400000 && r.amount < 0;
+  });
+  const recentSum = recent30.reduce((s, r) => s + Math.abs(r.amount), 0);
+  const avgDay = recent30.length > 0 ? recentSum / 30 : 0;
+  const avgMonth = avgDay * 30;
+
+  const cashAccounts = ['บัวหลวง (ต่อ)','กสิกร (ต่อ)','กสิกร(ซัน)','ไทยพาณิชย์ (ซัน)','กสิกร เงินเก็บ','True (ต่อ)','true (ซัน)'];
+  const cashBalance = state.rows.reduce((s, r) => cashAccounts.includes(r.account) ? s + r.amount : s, 0);
+  const daysLeft = avgDay > 0 ? Math.floor(cashBalance / avgDay) : Infinity;
+
+  document.getElementById('burnRate').innerHTML = `
+    <div>
+      <div class="text-xs text-slate-500">รายจ่ายเฉลี่ย/วัน (30 วันล่าสุด)</div>
+      <div class="text-xl font-bold text-expense">${fmtTHB.format(avgDay)}</div>
+    </div>
+    <div>
+      <div class="text-xs text-slate-500">รายจ่ายต่อเดือนโดยประมาณ</div>
+      <div class="text-lg font-semibold">${fmtTHB.format(avgMonth)}</div>
+    </div>
+    <div>
+      <div class="text-xs text-slate-500">ยอดเงินสดในมือ (รวมบัญชีเงินสด)</div>
+      <div class="text-lg font-semibold">${fmtTHB.format(cashBalance)}</div>
+    </div>
+    <div class="pt-3 border-t">
+      <div class="text-xs text-slate-500">ที่อัตรานี้จะอยู่ได้อีก</div>
+      <div class="text-2xl font-bold ${daysLeft < 60 ? 'text-expense' : 'text-income'}">
+        ${isFinite(daysLeft) ? fmtNum.format(daysLeft) + ' วัน' : '∞'}
+      </div>
+    </div>
+  `;
+}
+
+/* =========================================================
+ *  RENDER — BUDGET
+ * ========================================================= */
+function renderBudget() {
+  const m = groupByMonth(state.filtered);
+  const keys = [...m.keys()];
+  const lastKey = keys[keys.length - 1];
+  if (!lastKey) { document.getElementById('budgetList').innerHTML = '<p class="text-sm text-slate-500">ไม่มีข้อมูล</p>'; return; }
+
+  const lastMonthRows = state.filtered.filter(r => {
+    const k = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
+    return k === lastKey && r.amount < 0;
+  });
+  const cats = groupByCategory(lastMonthRows);
+
+  const allCats = new Set([...cats.keys(), ...Object.keys(state.budgets)]);
+  const catList = [...allCats].sort((a, b) => (cats.get(b)?.sum || 0) - (cats.get(a)?.sum || 0));
+
+  const html = catList.slice(0, 20).map(cat => {
+    const spent = cats.get(cat)?.sum || 0;
+    const budget = state.budgets[cat] || 0;
+    const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+    let barCls = 'bg-income';
+    if (pct >= 90) barCls = 'bg-expense';
+    else if (pct >= 75) barCls = 'bg-yellow-400';
+    return `
+      <div class="border border-slate-200 rounded-lg p-3">
+        <div class="flex justify-between items-center mb-1.5">
+          <div class="font-medium text-sm">${escapeHtml(cat)}</div>
+          <input type="number" data-cat="${escapeHtml(cat)}" value="${budget || ''}" placeholder="ตั้งงบ"
+                 class="budget-input w-24 px-2 py-0.5 border border-slate-300 rounded text-xs text-right" />
+        </div>
+        <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div class="h-full ${barCls} transition-all" style="width:${pct}%"></div>
+        </div>
+        <div class="flex justify-between text-xs text-slate-500 mt-1">
+          <span>ใช้ ${fmtTHB.format(spent)}</span>
+          <span>${budget ? 'งบ ' + fmtTHB.format(budget) + ' · ' + pct.toFixed(0) + '%' : 'ยังไม่ตั้งงบ'}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('budgetList').innerHTML = html || '<p class="text-sm text-slate-500">ไม่มีรายจ่ายในช่วงที่เลือก</p>';
+
+  document.querySelectorAll('.budget-input').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const cat = e.target.dataset.cat;
+      const val = parseFloat(e.target.value) || 0;
+      if (val > 0) state.budgets[cat] = val;
+      else delete state.budgets[cat];
+      localStorage.setItem('budgets', JSON.stringify(state.budgets));
+      renderBudget();
+    });
+  });
+}
+
+/* =========================================================
+ *  RENDER — MoM TABLE
+ * ========================================================= */
+function renderMoM() {
+  const m = groupByMonth(state.filtered);
+  const keys = [...m.keys()].slice(-6);
+  if (keys.length < 2) { document.getElementById('momTable').innerHTML = '<tr><td class="text-sm text-slate-500 py-3">ข้อมูลไม่พอ</td></tr>'; return; }
+
+  const catMap = new Map();
+  for (const r of state.filtered) {
+    if (r.amount >= 0) continue;
+    const k = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
+    if (!keys.includes(k)) continue;
+    const c = r.category || '(ไม่ระบุ)';
+    if (!catMap.has(c)) catMap.set(c, {});
+    if (!catMap.get(c)[k]) catMap.get(c)[k] = 0;
+    catMap.get(c)[k] += Math.abs(r.amount);
+  }
+
+  const rowsArr = [...catMap.entries()].map(([cat, vals]) => {
+    const last = vals[keys[keys.length - 1]] || 0;
+    const prev = vals[keys[keys.length - 2]] || 0;
+    const change = prev > 0 ? ((last - prev) / prev) * 100 : (last > 0 ? Infinity : 0);
+    return { cat, vals, last, prev, change };
+  }).filter(r => r.last > 0 || r.prev > 0)
+    .sort((a, b) => (isFinite(b.change) ? b.change : 1e9) - (isFinite(a.change) ? a.change : 1e9));
+
+  let html = '<thead><tr class="text-left text-xs text-slate-500 border-b">';
+  html += '<th class="py-2 pr-3">หมวด</th>';
+  for (const k of keys) html += '<th class="py-2 px-2 text-right">' + monthLabel(k) + '</th>';
+  html += '<th class="py-2 pl-2 text-right">%เปลี่ยน</th></tr></thead><tbody>';
+  for (const r of rowsArr.slice(0, 25)) {
+    html += '<tr class="border-b border-slate-100">';
+    html += '<td class="py-1.5 pr-3 font-medium">' + escapeHtml(r.cat) + '</td>';
+    for (const k of keys) {
+      const v = r.vals[k] || 0;
+      html += '<td class="py-1.5 px-2 text-right tabular-nums">' + (v > 0 ? fmtNum.format(Math.round(v)) : '-') + '</td>';
+    }
+    const cls = !isFinite(r.change) ? 'text-expense' : (r.change >= 0 ? 'text-expense' : 'text-income');
+    const sym = !isFinite(r.change) ? '+∞' : (r.change >= 0 ? '+' : '') + r.change.toFixed(0) + '%';
+    html += '<td class="py-1.5 pl-2 text-right font-semibold ' + cls + '">' + sym + '</td>';
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('momTable').innerHTML = html;
+}
+
+function monthLabel(key) {
+  const [y, m] = key.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+}
+
+/* =========================================================
+ *  RENDER — EVENT
+ * ========================================================= */
+function renderEvent() {
+  const evMap = new Map();
+  for (const r of state.filtered) {
+    const ev = r.event;
+    if (!ev) continue;
+    if (!evMap.has(ev)) evMap.set(ev, { rows: [], expense: 0, income: 0, cats: new Map() });
+    const o = evMap.get(ev);
+    o.rows.push(r);
+    if (r.amount < 0) {
+      o.expense += -r.amount;
+      o.cats.set(r.category, (o.cats.get(r.category) || 0) + Math.abs(r.amount));
+    } else o.income += r.amount;
+  }
+  if (evMap.size === 0) { document.getElementById('eventTable').innerHTML = '<tr><td class="text-sm text-slate-500 py-3">ไม่มี Event</td></tr>'; return; }
+
+  let html = '<thead><tr class="text-left text-xs text-slate-500 border-b">';
+  html += '<th class="py-2 pr-3">Event</th><th class="py-2 px-2 text-right">รายจ่าย</th><th class="py-2 px-2 text-right">รายรับ</th>';
+  html += '<th class="py-2 px-2 text-right">รายการ</th><th class="py-2 px-2">ช่วงวันที่</th><th class="py-2 pl-2">หมวดหลัก</th></tr></thead><tbody>';
+  const arr = [...evMap.entries()].sort((a, b) => b[1].expense - a[1].expense);
+  for (const [ev, o] of arr) {
+    const min = new Date(Math.min(...o.rows.map(r => r.date.getTime())));
+    const max = new Date(Math.max(...o.rows.map(r => r.date.getTime())));
+    const topCat = [...o.cats.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]).join(', ');
+    html += '<tr class="border-b border-slate-100">';
+    html += '<td class="py-1.5 pr-3 font-medium">' + escapeHtml(ev) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums text-expense">' + fmtTHB.format(o.expense) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums text-income">' + (o.income ? fmtTHB.format(o.income) : '-') + '</td>';
+    html += '<td class="py-1.5 px-2 text-right">' + o.rows.length + '</td>';
+    html += '<td class="py-1.5 px-2 text-xs text-slate-500">' + fmtDate(min) + ' – ' + fmtDate(max) + '</td>';
+    html += '<td class="py-1.5 pl-2 text-xs">' + escapeHtml(topCat) + '</td>';
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('eventTable').innerHTML = html;
+}
+
+/* =========================================================
+ *  RENDER — INSIGHTS
+ * ========================================================= */
+function renderInsights() {
+  const list = [];
+  const m = groupByMonth(state.filtered);
+  const monthArr = [...m.entries()];
+  if (monthArr.length > 0) {
+    const maxM = monthArr.reduce((a, b) => b[1].expense > a[1].expense ? b : a);
+    const minM = monthArr.reduce((a, b) => b[1].expense < a[1].expense ? b : a);
+    list.push(`📅 เดือนที่ใช้เงิน <b>มากที่สุด</b>: ${monthLabel(maxM[0])} = ${fmtTHB.format(maxM[1].expense)}`);
+    list.push(`📅 เดือนที่ใช้เงิน <b>น้อยที่สุด</b>: ${monthLabel(minM[0])} = ${fmtTHB.format(minM[1].expense)}`);
+  }
+
+  // หมวดที่เพิ่มเร็วสุด/ลดเร็วสุด (เทียบ 2 เดือนล่าสุด)
+  if (monthArr.length >= 2) {
+    const last = monthArr[monthArr.length - 1][0];
+    const prev = monthArr[monthArr.length - 2][0];
+    const lastCats = new Map(), prevCats = new Map();
+    for (const r of state.filtered) {
+      if (r.amount >= 0) continue;
+      const k = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
+      const c = r.category || '(ไม่ระบุ)';
+      if (k === last) lastCats.set(c, (lastCats.get(c) || 0) + Math.abs(r.amount));
+      if (k === prev) prevCats.set(c, (prevCats.get(c) || 0) + Math.abs(r.amount));
+    }
+    const diffs = [];
+    const allC = new Set([...lastCats.keys(), ...prevCats.keys()]);
+    for (const c of allC) {
+      const a = lastCats.get(c) || 0, b = prevCats.get(c) || 0;
+      if (a + b < 100) continue;
+      const ch = b > 0 ? ((a - b) / b) * 100 : (a > 0 ? Infinity : 0);
+      diffs.push({ c, a, b, ch });
+    }
+    diffs.sort((x, y) => (isFinite(y.ch) ? y.ch : 1e9) - (isFinite(x.ch) ? x.ch : 1e9));
+    if (diffs.length > 0) {
+      const top = diffs[0];
+      list.push(`🔺 หมวดที่ <b>เพิ่มเร็วสุด</b>: <b>${escapeHtml(top.c)}</b> ${isFinite(top.ch) ? '+' + top.ch.toFixed(0) + '%' : 'หมวดใหม่'} (${fmtTHB.format(top.b)} → ${fmtTHB.format(top.a)})`);
+      const bottom = diffs[diffs.length - 1];
+      if (bottom.ch < 0) list.push(`🔻 หมวดที่ <b>ลดเร็วสุด</b>: <b>${escapeHtml(bottom.c)}</b> ${bottom.ch.toFixed(0)}% (${fmtTHB.format(bottom.b)} → ${fmtTHB.format(bottom.a)})`);
+    }
+  }
+
+  // วันที่ใช้เงินสูงสุด
+  const dayMap = groupByDay(state.filtered);
+  if (dayMap.size > 0) {
+    let maxK = null, maxV = 0;
+    for (const [k, v] of dayMap) if (v.sum > maxV) { maxK = k; maxV = v.sum; }
+    if (maxK) list.push(`📌 วันที่ใช้เงิน <b>สูงสุด</b>: ${fmtDate(new Date(maxK))} = ${fmtTHB.format(maxV)} (${dayMap.get(maxK).count} รายการ)`);
+  }
+
+  // Top 5 รายการเดี่ยว
+  const topRows = [...state.filtered].filter(r => r.amount < 0).sort((a, b) => a.amount - b.amount).slice(0, 5);
+  if (topRows.length) {
+    list.push('💎 รายจ่ายเดี่ยวสูงสุด 5 อันดับ:');
+    for (const r of topRows) {
+      const note = r.note ? ' — ' + escapeHtml(r.note) : '';
+      list.push(`&nbsp;&nbsp;• ${fmtDate(r.date)} <b>${escapeHtml(r.category)}</b>${note} <span class="text-expense">${fmtTHB.format(Math.abs(r.amount))}</span>`);
+    }
+  }
+
+  document.getElementById('insightsList').innerHTML = list.map(t => '<li>' + t + '</li>').join('');
+}
+
+/* =========================================================
+ *  RENDER — TXN TABLE
+ * ========================================================= */
+function renderTxnTable() {
+  let rows = [...state.filtered];
+  if (state.txnSearch) {
+    const q = state.txnSearch.toLowerCase();
+    rows = rows.filter(r => (r.note + ' ' + r.category + ' ' + r.account + ' ' + r.event).toLowerCase().includes(q));
+  }
+  rows.sort((a, b) => {
+    const c = state.txnSort.col;
+    let av = a[c], bv = b[c];
+    if (c === 'date') { av = a.date.getTime(); bv = b.date.getTime(); }
+    if (typeof av === 'string') return state.txnSort.dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    return state.txnSort.dir === 'asc' ? av - bv : bv - av;
+  });
+
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / state.txnPerPage));
+  if (state.txnPage > pages) state.txnPage = pages;
+  const start = (state.txnPage - 1) * state.txnPerPage;
+  const slice = rows.slice(start, start + state.txnPerPage);
+
+  const cols = [
+    { k:'date',     label:'วันที่' },
+    { k:'category', label:'หมวด' },
+    { k:'note',     label:'หมายเหตุ' },
+    { k:'account',  label:'บัญชี' },
+    { k:'event',    label:'Event' },
+    { k:'amount',   label:'จำนวน', right:true },
+  ];
+
+  let html = '<thead><tr class="text-xs text-slate-500 border-b">';
+  for (const c of cols) {
+    const arrow = state.txnSort.col === c.k ? (state.txnSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+    html += '<th class="py-2 px-2 cursor-pointer hover:text-slate-800 ' + (c.right ? 'text-right' : 'text-left') + '" data-sort="' + c.k + '">' + c.label + arrow + '</th>';
+  }
+  html += '</tr></thead><tbody>';
+  for (const r of slice) {
+    const cls = r.amount < 0 ? 'text-expense' : 'text-income';
+    html += '<tr class="border-b border-slate-100">';
+    html += '<td class="py-1.5 px-2 whitespace-nowrap">' + fmtDate(r.date) + '</td>';
+    html += '<td class="py-1.5 px-2">' + escapeHtml(r.category) + '</td>';
+    html += '<td class="py-1.5 px-2">' + escapeHtml(r.note) + '</td>';
+    html += '<td class="py-1.5 px-2 text-xs text-slate-600">' + escapeHtml(r.account) + '</td>';
+    html += '<td class="py-1.5 px-2 text-xs text-slate-500">' + escapeHtml(r.event) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right font-semibold tabular-nums ' + cls + '">' + fmtTHB2.format(r.amount) + '</td>';
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('txnTable').innerHTML = html;
+
+  document.querySelectorAll('#txnTable th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.sort;
+      if (state.txnSort.col === k) state.txnSort.dir = state.txnSort.dir === 'asc' ? 'desc' : 'asc';
+      else { state.txnSort.col = k; state.txnSort.dir = 'desc'; }
+      renderTxnTable();
+    });
+  });
+
+  document.getElementById('txnCount').textContent = 'ทั้งหมด ' + fmtNum.format(total) + ' รายการ';
+  document.getElementById('pageInfo').textContent = 'หน้า ' + state.txnPage + ' / ' + pages;
+}
+
+/* =========================================================
+ *  CHART HELPERS
+ * ========================================================= */
+function renderChart(key, ctx, cfg) {
+  if (state.charts[key]) state.charts[key].destroy();
+  state.charts[key] = new Chart(ctx, cfg);
+}
+
+function chartOpts({ ySymbol = false } = {}) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { font: { family: 'Sarabun' } } },
+      tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + (c.parsed.y == null ? '-' : fmtTHB.format(c.parsed.y)) } }
+    },
+    scales: {
+      y: { ticks: { callback: (v) => ySymbol ? abbrev(v) : v } },
+      x: { ticks: { font: { family: 'Sarabun', size: 11 } } }
+    }
+  };
+}
+
+function abbrev(v) {
+  if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (Math.abs(v) >= 1e3) return (v / 1e3).toFixed(0) + 'K';
+  return v;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+/* =========================================================
+ *  FILTER UI
+ * ========================================================= */
+function setupFilterUI() {
+  const accounts = [...new Set(state.rows.map(r => r.account))].sort();
+  const categories = [...new Set(state.rows.map(r => r.category))].sort();
+
+  document.getElementById('accountList').innerHTML = accounts.map(a =>
+    `<label class="flex items-center gap-2 py-0.5 text-sm hover:bg-slate-50 rounded px-1">
+       <input type="checkbox" class="acct-chk" value="${escapeHtml(a)}" /> ${escapeHtml(a)}
+     </label>`).join('');
+  document.getElementById('categoryList').innerHTML = categories.map(c =>
+    `<label class="flex items-center gap-2 py-0.5 text-sm hover:bg-slate-50 rounded px-1 cat-row">
+       <input type="checkbox" class="cat-chk" value="${escapeHtml(c)}" /> ${escapeHtml(c)}
+     </label>`).join('');
+
+  document.querySelectorAll('.acct-chk').forEach(c => c.addEventListener('change', () => {
+    state.filters.accounts = new Set([...document.querySelectorAll('.acct-chk:checked')].map(x => x.value));
+    document.getElementById('accountCount').textContent = state.filters.accounts.size === 0 ? 'ทั้งหมด' : state.filters.accounts.size + ' รายการ';
+    refresh();
+  }));
+  document.querySelectorAll('.cat-chk').forEach(c => c.addEventListener('change', () => {
+    state.filters.categories = new Set([...document.querySelectorAll('.cat-chk:checked')].map(x => x.value));
+    document.getElementById('categoryCount').textContent = state.filters.categories.size === 0 ? 'ทั้งหมด' : state.filters.categories.size + ' รายการ';
+    refresh();
+  }));
+  document.getElementById('categorySearch').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.cat-row').forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+
+  document.getElementById('dateFrom').addEventListener('change', e => { state.filters.dateFrom = e.target.value ? new Date(e.target.value) : null; refresh(); });
+  document.getElementById('dateTo').addEventListener('change',   e => {
+    state.filters.dateTo = e.target.value ? new Date(e.target.value + 'T23:59:59') : null; refresh();
+  });
+  document.querySelectorAll('.preset-btn').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
+  document.getElementById('includeInternal').addEventListener('change', e => { state.filters.includeInternal = e.target.checked; refresh(); });
+  document.getElementById('includeCreditPay').addEventListener('change', e => { state.filters.includeCreditPay = e.target.checked; refresh(); });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    setDefaults();
+    document.getElementById('includeInternal').checked = false;
+    document.getElementById('includeCreditPay').checked = false;
+    document.querySelectorAll('.acct-chk, .cat-chk').forEach(c => c.checked = false);
+    document.getElementById('accountCount').textContent = 'ทั้งหมด';
+    document.getElementById('categoryCount').textContent = 'ทั้งหมด';
+    refresh();
+  });
+}
+
+function applyPreset(p) {
+  const max = new Date(Math.max(...state.rows.map(r => r.date.getTime())));
+  const min = new Date(Math.min(...state.rows.map(r => r.date.getTime())));
+  let from, to = max;
+  if (p === 'all') { from = min; }
+  else if (p === 'ytd') { from = new Date(max.getFullYear(), 0, 1); }
+  else if (p === 'prev-year') { from = new Date(max.getFullYear() - 1, 0, 1); to = new Date(max.getFullYear() - 1, 11, 31); }
+  else { from = new Date(max.getTime() - parseInt(p) * 86400000); }
+  state.filters.dateFrom = from;
+  state.filters.dateTo = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59);
+  document.getElementById('dateFrom').value = from.toISOString().slice(0, 10);
+  document.getElementById('dateTo').value = to.toISOString().slice(0, 10);
+  refresh();
+}
+
+function setDefaults() {
+  if (state.rows.length === 0) return;
+  const max = new Date(Math.max(...state.rows.map(r => r.date.getTime())));
+  const min = new Date(Math.min(...state.rows.map(r => r.date.getTime())));
+  state.filters.dateFrom = min;
+  state.filters.dateTo = new Date(max.getFullYear(), max.getMonth(), max.getDate(), 23, 59, 59);
+  state.filters.accounts = new Set();
+  state.filters.categories = new Set();
+  state.filters.includeInternal = false;
+  state.filters.includeCreditPay = false;
+  document.getElementById('dateFrom').value = min.toISOString().slice(0, 10);
+  document.getElementById('dateTo').value = max.toISOString().slice(0, 10);
+}
+
+/* =========================================================
+ *  CSV EXPORT
+ * ========================================================= */
+function exportFiltered() {
+  const headers = ['ID','Note','Amount','Category','Account','Currency','Date','Event','Exclude Report'];
+  const rows = state.filtered.map(r => [r.id, r.note, r.amount, r.category, r.account, r.currency, r.dateStr, r.event, r.excludeReport]);
+  const csv = Papa.unparse([headers, ...rows]);
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'transactions-filtered-' + Date.now() + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* =========================================================
+ *  ORCHESTRATION
+ * ========================================================= */
+function refresh() {
+  applyFilters();
+  renderKPIs();
+  renderTrendChart();
+  renderCategoryDoughnut();
+  renderTopCatBar();
+  renderAccountBar();
+  renderDowBar();
+  renderHeatmap();
+  renderForecast();
+  renderBudget();
+  renderMoM();
+  renderEvent();
+  renderInsights();
+  state.txnPage = 1;
+  renderTxnTable();
+}
+
+function onDataLoaded() {
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('reloadBtn').classList.remove('hidden');
+
+  const min = new Date(Math.min(...state.rows.map(r => r.date.getTime())));
+  const max = new Date(Math.max(...state.rows.map(r => r.date.getTime())));
+  document.getElementById('dataSummary').classList.remove('hidden');
+  document.getElementById('dataSummary').innerHTML =
+    `📑 โหลด <b>${fmtNum.format(state.rows.length)}</b> รายการ ตั้งแต่ <b>${fmtDate(min)}</b> ถึง <b>${fmtDate(max)}</b>`;
+
+  setDefaults();
+  setupFilterUI();
+  refresh();
+}
+
+/* =========================================================
+ *  EVENT BINDINGS
+ * ========================================================= */
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) parseCSV(e.target.files[0]);
+});
+document.getElementById('reloadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+
+['dragenter','dragover'].forEach(ev => {
+  document.getElementById('dropZone').addEventListener(ev, e => { e.preventDefault(); e.target.closest('#dropZone').classList.add('drag-active'); });
+});
+['dragleave','drop'].forEach(ev => {
+  document.getElementById('dropZone').addEventListener(ev, e => { e.preventDefault(); e.target.closest('#dropZone').classList.remove('drag-active'); });
+});
+document.getElementById('dropZone').addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.dataTransfer.files[0]) parseCSV(e.dataTransfer.files[0]);
+});
+
+document.getElementById('txnSearch').addEventListener('input', e => { state.txnSearch = e.target.value; state.txnPage = 1; renderTxnTable(); });
+document.getElementById('exportCsv').addEventListener('click', exportFiltered);
+document.getElementById('prevPage').addEventListener('click', () => { if (state.txnPage > 1) { state.txnPage--; renderTxnTable(); } });
+document.getElementById('nextPage').addEventListener('click', () => { state.txnPage++; renderTxnTable(); });
+</script>
+</body>
+</html>
