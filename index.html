@@ -42,8 +42,6 @@
   .card { background:#fff; border:1px solid rgb(226 232 240); border-radius:14px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
   .stat-up::before   { content:'▲ '; }
   .stat-down::before { content:'▼ '; }
-  /* heatmap */
-  .heat-cell { width:14px; height:14px; border-radius:3px; display:inline-block; }
   /* dropdown */
   details > summary { list-style:none; cursor:pointer; }
   details > summary::-webkit-details-marker { display:none; }
@@ -191,21 +189,15 @@
     </div>
   </section>
 
-  <!-- Heatmap -->
+  <!-- Savings / Investment Tracker -->
   <section class="card p-5 mb-6">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <h2 class="text-lg font-semibold">🔥 Heatmap รายจ่ายรายวัน</h2>
-      <div class="flex items-center gap-1 text-xs text-slate-500">
-        <span>น้อย</span>
-        <span class="heat-cell" style="background:#FFE4E6"></span>
-        <span class="heat-cell" style="background:#FBA4AF"></span>
-        <span class="heat-cell" style="background:#F87171"></span>
-        <span class="heat-cell" style="background:#DC2626"></span>
-        <span class="heat-cell" style="background:#7F1D1D"></span>
-        <span>มาก</span>
-      </div>
+      <h2 class="text-lg font-semibold">💎 ติดตามการออม / ลงทุนสะสม</h2>
+      <div class="text-xs text-slate-500">นับเฉพาะหมวดที่กำหนดเป็น "เก็บออม/ลงทุน" — ไม่ถือเป็นค่าใช้จ่าย</div>
     </div>
-    <div id="heatmap" class="overflow-x-auto"></div>
+    <div id="savingsKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+    <div class="relative h-72"><canvas id="savingsChart"></canvas></div>
+    <p id="savingsSummary" class="text-sm text-slate-600 mt-3"></p>
   </section>
 
   <!-- Forecast & Burn rate -->
@@ -219,15 +211,6 @@
       <h2 class="text-lg font-semibold mb-3">⏱️ Burn Rate</h2>
       <div id="burnRate" class="space-y-3"></div>
     </div>
-  </section>
-
-  <!-- Budget Tracking -->
-  <section class="card p-5 mb-6">
-    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <h2 class="text-lg font-semibold">🎯 ตั้งงบประมาณรายหมวด</h2>
-      <div class="text-xs text-slate-500">เทียบกับยอดใช้จริงในเดือนล่าสุดของช่วงที่เลือก · บันทึกอัตโนมัติ</div>
-    </div>
-    <div id="budgetList" class="grid md:grid-cols-2 gap-3"></div>
   </section>
 
   <!-- MoM Table -->
@@ -378,6 +361,7 @@ function serializeRows(rows) {
     event: r.event || '',
     excludeReport: !!r.excludeReport,
     isIncome: !!r.isIncome,
+    isSavings: !!r.isSavings,
   }));
 }
 
@@ -385,7 +369,7 @@ function deserializeRows(arr) {
   return arr.map(r => {
     const [d, m, y] = (r.dateStr || '').split('/');
     const date = new Date(+y, +m - 1, +d);
-    return { ...r, date };
+    return { ...r, date, isSavings: SAVINGS_CATEGORIES.has(r.category) };
   }).filter(r => !isNaN(r.date.getTime()))
     .sort((a, b) => b.date - a.date);
 }
@@ -415,7 +399,6 @@ async function saveToCloud() {
       owner: cloud.uid,
       rowCount: serialized.length,
       chunkCount,
-      budgets: state.budgets || {},
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
@@ -445,28 +428,12 @@ async function loadFromCloud() {
       const data = d.data();
       if (Array.isArray(data.rows)) allRows.push(...data.rows);
     });
-    if (meta.budgets && typeof meta.budgets === 'object') {
-      state.budgets = meta.budgets;
-      localStorage.setItem('budgets', JSON.stringify(state.budgets));
-    }
     setSyncStatus('✅ โหลดจากคลาวด์ · ' + (allRows.length) + ' รายการ', 'ok');
     return deserializeRows(allRows);
   } catch (e) {
     console.error('loadFromCloud failed:', e);
     setSyncStatus('⚠️ โหลดคลาวด์ล้มเหลว: ' + (e.message || e.code), 'error');
     return null;
-  }
-}
-
-async function saveBudgetsToCloud() {
-  if (!cloud.ready) return;
-  try {
-    await cloud.db.collection('workspaces').doc(cloud.wsId).set({
-      budgets: state.budgets || {},
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-  } catch (e) {
-    console.error('saveBudgetsToCloud failed:', e);
   }
 }
 
@@ -497,7 +464,6 @@ const state = {
     includeInternal: false,
     includeCreditPay: false,
   },
-  budgets: JSON.parse(localStorage.getItem('budgets') || '{}'),
   charts: {},
   txnPage: 1,
   txnPerPage: 50,
@@ -507,6 +473,8 @@ const state = {
 
 const INTERNAL_CATEGORIES = new Set(['โอนเงินเข้า','โอนเงินออก']);
 const CREDITPAY_CATEGORIES = new Set(['จ่ายบัตรเครดิต','รับค่าชำระบัตรเครดิต']);
+// หมวดที่ถือเป็น "เก็บออม / ลงทุน" — ไม่ถูกนับเป็นรายจ่าย แต่ติดตามแยกในกราฟ "ลงทุนสะสม"
+const SAVINGS_CATEGORIES = new Set(['การลงทุน']);
 
 const fmtTHB  = new Intl.NumberFormat('th-TH', { style:'currency', currency:'THB', maximumFractionDigits:0 });
 const fmtTHB2 = new Intl.NumberFormat('th-TH', { style:'currency', currency:'THB', maximumFractionDigits:2 });
@@ -526,11 +494,12 @@ function parseCSV(file) {
         const [d, m, y] = (r['Date'] || '').split('/');
         const date = new Date(+y, +m - 1, +d);
         const amt  = parseFloat(r['Amount']) || 0;
+        const cat  = (r['Category'] || '').trim();
         return {
           id: r['ID'],
           note: r['Note'] || '',
           amount: amt,
-          category: (r['Category'] || '').trim(),
+          category: cat,
           account: (r['Account'] || '').trim(),
           currency: r['Currency'] || 'THB',
           date,
@@ -538,6 +507,7 @@ function parseCSV(file) {
           event: (r['Event'] || '').trim(),
           excludeReport: (r['Exclude Report'] || '').toLowerCase() === 'true',
           isIncome: amt > 0,
+          isSavings: SAVINGS_CATEGORIES.has(cat),
         };
       }).filter(r => !isNaN(r.date.getTime()));
       rows.sort((a, b) => b.date - a.date);
@@ -561,7 +531,7 @@ function applyFilters() {
     if (categories.size && !categories.has(r.category)) return false;
     if (!includeInternal  && INTERNAL_CATEGORIES.has(r.category))   return false;
     if (!includeCreditPay && CREDITPAY_CATEGORIES.has(r.category))  return false;
-    if (!includeInternal  && r.excludeReport && !CREDITPAY_CATEGORIES.has(r.category)) return false;
+    if (!includeInternal  && r.excludeReport && !CREDITPAY_CATEGORIES.has(r.category) && !r.isSavings) return false;
     return true;
   });
 }
@@ -570,16 +540,19 @@ function applyFilters() {
  *  AGGREGATIONS
  * ========================================================= */
 function computeKPIs(rows) {
-  let income = 0, expense = 0, count = rows.length;
+  let income = 0, expense = 0, savingsOut = 0, savingsIn = 0;
   for (const r of rows) {
-    if (r.amount > 0) income  += r.amount;
-    else              expense += -r.amount;
+    if (r.isSavings) {
+      if (r.amount < 0) savingsOut += -r.amount;
+      else              savingsIn  += r.amount;
+    } else if (r.amount > 0) income  += r.amount;
+    else                     expense += -r.amount;
   }
   const net = income - expense;
   const savings = income > 0 ? (net / income) * 100 : 0;
   const days = daysSpan(rows);
   const avgDay = days > 0 ? expense / days : 0;
-  return { income, expense, net, savings, avgDay, count, days };
+  return { income, expense, net, savings, avgDay, count: rows.length, days, savingsOut, savingsIn, savingsNet: savingsOut - savingsIn };
 }
 
 function daysSpan(rows) {
@@ -595,10 +568,11 @@ function groupByMonth(rows) {
     const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
     if (!map.has(key)) map.set(key, { income: 0, expense: 0, net: 0, count: 0 });
     const o = map.get(key);
+    o.count++;
+    if (r.isSavings) continue;
     if (r.amount > 0) o.income += r.amount;
     else              o.expense += -r.amount;
     o.net = o.income - o.expense;
-    o.count++;
   }
   return new Map([...map.entries()].sort());
 }
@@ -606,6 +580,7 @@ function groupByMonth(rows) {
 function groupByCategory(rows, expenseOnly = true) {
   const map = new Map();
   for (const r of rows) {
+    if (r.isSavings) continue;
     if (expenseOnly && r.amount >= 0) continue;
     const k = r.category || '(ไม่ระบุ)';
     if (!map.has(k)) map.set(k, { sum: 0, count: 0 });
@@ -619,6 +594,7 @@ function groupByCategory(rows, expenseOnly = true) {
 function groupByAccount(rows) {
   const map = new Map();
   for (const r of rows) {
+    if (r.isSavings) continue;
     if (r.amount >= 0) continue;
     const k = r.account || '(ไม่ระบุ)';
     if (!map.has(k)) map.set(k, 0);
@@ -631,6 +607,7 @@ function groupByDayOfWeek(rows) {
   const arr = [0, 0, 0, 0, 0, 0, 0];
   const cnt = [0, 0, 0, 0, 0, 0, 0];
   for (const r of rows) {
+    if (r.isSavings) continue;
     if (r.amount >= 0) continue;
     const d = r.date.getDay();
     arr[d] += Math.abs(r.amount);
@@ -642,6 +619,7 @@ function groupByDayOfWeek(rows) {
 function groupByDay(rows) {
   const map = new Map();
   for (const r of rows) {
+    if (r.isSavings) continue;
     if (r.amount >= 0) continue;
     const k = r.date.toISOString().slice(0, 10);
     if (!map.has(k)) map.set(k, { sum: 0, count: 0 });
@@ -650,6 +628,21 @@ function groupByDay(rows) {
     o.count++;
   }
   return map;
+}
+
+function groupSavingsByMonth(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    if (!r.isSavings) continue;
+    const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
+    if (!map.has(key)) map.set(key, { out: 0, in: 0, net: 0, count: 0 });
+    const o = map.get(key);
+    if (r.amount < 0) o.out += -r.amount;
+    else              o.in  += r.amount;
+    o.net = o.out - o.in;
+    o.count++;
+  }
+  return new Map([...map.entries()].sort());
 }
 
 function movingAverage(values, n = 3) {
@@ -735,7 +728,7 @@ function priorPeriodKPIs() {
     if (state.filters.categories.size && !state.filters.categories.has(r.category)) return false;
     if (!state.filters.includeInternal && INTERNAL_CATEGORIES.has(r.category)) return false;
     if (!state.filters.includeCreditPay && CREDITPAY_CATEGORIES.has(r.category)) return false;
-    if (!state.filters.includeInternal && r.excludeReport && !CREDITPAY_CATEGORIES.has(r.category)) return false;
+    if (!state.filters.includeInternal && r.excludeReport && !CREDITPAY_CATEGORIES.has(r.category) && !r.isSavings) return false;
     return true;
   });
   return computeKPIs(rows);
@@ -848,75 +841,6 @@ function renderDowBar() {
 }
 
 /* =========================================================
- *  RENDER — HEATMAP
- * ========================================================= */
-function renderHeatmap() {
-  const map = groupByDay(state.filtered);
-  const rows = state.filtered;
-  if (rows.length === 0) { document.getElementById('heatmap').innerHTML = ''; return; }
-  const minDate = new Date(Math.min(...rows.map(r => r.date.getTime())));
-  const maxDate = new Date(Math.max(...rows.map(r => r.date.getTime())));
-  const start = new Date(minDate); start.setDate(start.getDate() - start.getDay());
-  const end   = new Date(maxDate); end.setDate(end.getDate() + (6 - end.getDay()));
-
-  const sums = [...map.values()].map(v => v.sum).sort((a, b) => a - b);
-  const q = (p) => sums.length === 0 ? 0 : sums[Math.floor(sums.length * p)];
-  const t1 = q(.20), t2 = q(.45), t3 = q(.70), t4 = q(.90);
-  const colorOf = (v) => {
-    if (!v || v === 0) return '#F1F5F9';
-    if (v <= t1) return '#FFE4E6';
-    if (v <= t2) return '#FBA4AF';
-    if (v <= t3) return '#F87171';
-    if (v <= t4) return '#DC2626';
-    return '#7F1D1D';
-  };
-
-  const weeks = [];
-  let cur = new Date(start);
-  while (cur <= end) {
-    const week = [];
-    for (let i = 0; i < 7; i++) {
-      const k = cur.toISOString().slice(0, 10);
-      const v = map.get(k);
-      week.push({ date: new Date(cur), key: k, sum: v ? v.sum : 0, count: v ? v.count : 0 });
-      cur.setDate(cur.getDate() + 1);
-    }
-    weeks.push(week);
-  }
-
-  const dayLabels = ['','จ','','พ','','ศ',''];
-  const monthLabels = [];
-  let lastMonth = -1;
-  for (const w of weeks) {
-    const d = w[0].date;
-    if (d.getMonth() !== lastMonth) {
-      monthLabels.push(d.toLocaleDateString('th-TH', { month: 'short' }));
-      lastMonth = d.getMonth();
-    } else monthLabels.push('');
-  }
-
-  let html = '<div style="display:inline-flex;flex-direction:column;gap:2px;font-size:10px;line-height:1;color:#64748b;">';
-  html += '<div style="display:grid;grid-template-columns:repeat('+weeks.length+', 16px);gap:2px;padding-left:18px">';
-  html += monthLabels.map(m => '<div style="height:12px">'+m+'</div>').join('');
-  html += '</div>';
-  html += '<div style="display:flex;gap:2px;">';
-  html += '<div style="display:flex;flex-direction:column;gap:2px;width:16px;">' + dayLabels.map(l => '<div style="height:14px">'+l+'</div>').join('') + '</div>';
-  html += '<div style="display:grid;grid-template-columns:repeat('+weeks.length+', 14px);grid-auto-rows:14px;grid-auto-flow:column;gap:2px;">';
-  for (const w of weeks) {
-    for (const c of w) {
-      const inRange = c.date >= minDate && c.date <= maxDate;
-      const bg = inRange ? colorOf(c.sum) : 'transparent';
-      const tip = inRange
-        ? c.date.toLocaleDateString('th-TH', { dateStyle:'medium' }) + ': ' + fmtTHB.format(c.sum) + ' (' + c.count + ' รายการ)'
-        : '';
-      html += '<div class="heat-cell" style="background:'+bg+'" title="'+tip.replace(/"/g,'&quot;')+'"></div>';
-    }
-  }
-  html += '</div></div></div>';
-  document.getElementById('heatmap').innerHTML = html;
-}
-
-/* =========================================================
  *  RENDER — FORECAST + BURN RATE
  * ========================================================= */
 function renderForecast() {
@@ -976,7 +900,7 @@ function renderForecast() {
   // Burn rate
   const recent30 = state.filtered.filter(r => {
     const ms = (Date.now() - r.date.getTime());
-    return ms >= 0 && ms <= 30 * 86400000 && r.amount < 0;
+    return ms >= 0 && ms <= 30 * 86400000 && r.amount < 0 && !r.isSavings;
   });
   const recentSum = recent30.reduce((s, r) => s + Math.abs(r.amount), 0);
   const avgDay = recent30.length > 0 ? recentSum / 30 : 0;
@@ -1009,60 +933,71 @@ function renderForecast() {
 }
 
 /* =========================================================
- *  RENDER — BUDGET
+ *  RENDER — SAVINGS / INVESTMENT TRACKER
  * ========================================================= */
-function renderBudget() {
-  const m = groupByMonth(state.filtered);
+function renderSavings() {
+  const k = computeKPIs(state.filtered);
+  const m = groupSavingsByMonth(state.filtered);
   const keys = [...m.keys()];
-  const lastKey = keys[keys.length - 1];
-  if (!lastKey) { document.getElementById('budgetList').innerHTML = '<p class="text-sm text-slate-500">ไม่มีข้อมูล</p>'; return; }
+  const monthsSpan = keys.length;
+  const lastMonthOut = monthsSpan ? m.get(keys[keys.length - 1]).out : 0;
+  const lastMonthIn  = monthsSpan ? m.get(keys[keys.length - 1]).in  : 0;
+  const avgPerMonth  = monthsSpan ? k.savingsNet / monthsSpan : 0;
 
-  const lastMonthRows = state.filtered.filter(r => {
-    const k = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
-    return k === lastKey && r.amount < 0;
+  const kpiCards = [
+    { title: 'ลงทุนสะสม (ช่วงที่เลือก)', val: fmtTHB.format(k.savingsNet), emoji: '💎', cls: 'text-brand' },
+    { title: 'ลงทุนเดือนล่าสุด',         val: fmtTHB.format(lastMonthOut - lastMonthIn), emoji: '📅', cls: 'text-indigo-600' },
+    { title: 'เฉลี่ยต่อเดือน',           val: fmtTHB.format(avgPerMonth), emoji: '📊', cls: 'text-indigo-600' },
+    { title: 'ถอน/ขายคืน',              val: fmtTHB.format(k.savingsIn), emoji: '↩️', cls: 'text-slate-700' },
+  ];
+  document.getElementById('savingsKpi').innerHTML = kpiCards.map(c => `
+    <div class="border border-slate-200 rounded-lg p-3">
+      <div class="text-xs text-slate-500">${c.emoji} ${c.title}</div>
+      <div class="text-lg font-bold ${c.cls}">${c.val}</div>
+    </div>
+  `).join('');
+
+  const labels = keys.map(monthLabel);
+  const outs   = keys.map(kk => m.get(kk).out);
+  const ins    = keys.map(kk => m.get(kk).in);
+  let cum = 0;
+  const cumulative = keys.map(kk => { cum += m.get(kk).out - m.get(kk).in; return cum; });
+
+  if (keys.length === 0) {
+    renderChart('savings', document.getElementById('savingsChart'), { type:'bar', data:{ labels:[], datasets:[] }, options:{} });
+    document.getElementById('savingsSummary').textContent =
+      'ยังไม่พบรายการในหมวด "การลงทุน" — ใน Money Lover ตั้งหมวดให้ชื่อตรงกัน หรือแก้ใน SAVINGS_CATEGORIES ใน index.html';
+    return;
+  }
+
+  renderChart('savings', document.getElementById('savingsChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { type:'bar', label:'ใส่เงิน',   data: outs, backgroundColor:'#4F46E5', borderRadius:4, yAxisID:'y' },
+        { type:'bar', label:'ถอน/ขาย',   data: ins,  backgroundColor:'#F59E0B', borderRadius:4, yAxisID:'y' },
+        { type:'line', label:'สะสม (สุทธิ)', data: cumulative, borderColor:'#10B981', backgroundColor:'rgba(16,185,129,.15)', fill:true, tension:.3, pointRadius:3, borderWidth:2, yAxisID:'y1' },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { font: { family: 'Sarabun', size: 11 } } },
+        tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtTHB.format(c.parsed.y) } },
+      },
+      scales: {
+        y:  { position:'left',  ticks:{ callback:(v) => abbrev(v) }, title:{ display:true, text:'รายเดือน' } },
+        y1: { position:'right', ticks:{ callback:(v) => abbrev(v) }, grid:{ drawOnChartArea:false }, title:{ display:true, text:'สะสม' } },
+      },
+    },
   });
-  const cats = groupByCategory(lastMonthRows);
 
-  const allCats = new Set([...cats.keys(), ...Object.keys(state.budgets)]);
-  const catList = [...allCats].sort((a, b) => (cats.get(b)?.sum || 0) - (cats.get(a)?.sum || 0));
-
-  const html = catList.slice(0, 20).map(cat => {
-    const spent = cats.get(cat)?.sum || 0;
-    const budget = state.budgets[cat] || 0;
-    const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
-    let barCls = 'bg-income';
-    if (pct >= 90) barCls = 'bg-expense';
-    else if (pct >= 75) barCls = 'bg-yellow-400';
-    return `
-      <div class="border border-slate-200 rounded-lg p-3">
-        <div class="flex justify-between items-center mb-1.5">
-          <div class="font-medium text-sm">${escapeHtml(cat)}</div>
-          <input type="number" data-cat="${escapeHtml(cat)}" value="${budget || ''}" placeholder="ตั้งงบ"
-                 class="budget-input w-24 px-2 py-0.5 border border-slate-300 rounded text-xs text-right" />
-        </div>
-        <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div class="h-full ${barCls} transition-all" style="width:${pct}%"></div>
-        </div>
-        <div class="flex justify-between text-xs text-slate-500 mt-1">
-          <span>ใช้ ${fmtTHB.format(spent)}</span>
-          <span>${budget ? 'งบ ' + fmtTHB.format(budget) + ' · ' + pct.toFixed(0) + '%' : 'ยังไม่ตั้งงบ'}</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-  document.getElementById('budgetList').innerHTML = html || '<p class="text-sm text-slate-500">ไม่มีรายจ่ายในช่วงที่เลือก</p>';
-
-  document.querySelectorAll('.budget-input').forEach(inp => {
-    inp.addEventListener('change', e => {
-      const cat = e.target.dataset.cat;
-      const val = parseFloat(e.target.value) || 0;
-      if (val > 0) state.budgets[cat] = val;
-      else delete state.budgets[cat];
-      localStorage.setItem('budgets', JSON.stringify(state.budgets));
-      saveBudgetsToCloud();
-      renderBudget();
-    });
-  });
+  const trend = cumulative.length >= 2 && cumulative[cumulative.length - 1] > cumulative[0] ? 'เพิ่มขึ้น 📈' : 'ทรงตัว / ลดลง';
+  document.getElementById('savingsSummary').innerHTML =
+    `📌 ยอดสะสมล่าสุด <b>${fmtTHB.format(cumulative[cumulative.length - 1] || 0)}</b> · ` +
+    `แนวโน้ม ${trend} · เฉลี่ย ${fmtTHB.format(avgPerMonth)}/เดือน · ${monthsSpan} เดือน`;
 }
 
 /* =========================================================
@@ -1075,6 +1010,7 @@ function renderMoM() {
 
   const catMap = new Map();
   for (const r of state.filtered) {
+    if (r.isSavings) continue;
     if (r.amount >= 0) continue;
     const k = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
     if (!keys.includes(k)) continue;
@@ -1125,6 +1061,7 @@ function renderEvent() {
   for (const r of state.filtered) {
     const ev = r.event;
     if (!ev) continue;
+    if (r.isSavings) continue;
     if (!evMap.has(ev)) evMap.set(ev, { rows: [], expense: 0, income: 0, cats: new Map() });
     const o = evMap.get(ev);
     o.rows.push(r);
@@ -1176,6 +1113,7 @@ function renderInsights() {
     const prev = monthArr[monthArr.length - 2][0];
     const lastCats = new Map(), prevCats = new Map();
     for (const r of state.filtered) {
+      if (r.isSavings) continue;
       if (r.amount >= 0) continue;
       const k = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
       const c = r.category || '(ไม่ระบุ)';
@@ -1208,7 +1146,7 @@ function renderInsights() {
   }
 
   // Top 5 รายการเดี่ยว
-  const topRows = [...state.filtered].filter(r => r.amount < 0).sort((a, b) => a.amount - b.amount).slice(0, 5);
+  const topRows = [...state.filtered].filter(r => r.amount < 0 && !r.isSavings).sort((a, b) => a.amount - b.amount).slice(0, 5);
   if (topRows.length) {
     list.push('💎 รายจ่ายเดี่ยวสูงสุด 5 อันดับ:');
     for (const r of topRows) {
@@ -1424,9 +1362,8 @@ function refresh() {
   renderTopCatBar();
   renderAccountBar();
   renderDowBar();
-  renderHeatmap();
   renderForecast();
-  renderBudget();
+  renderSavings();
   renderMoM();
   renderEvent();
   renderInsights();
