@@ -189,6 +189,30 @@
     </div>
   </section>
 
+  <!-- Income Source Analysis -->
+  <section class="card p-5 mb-6">
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <h2 class="text-lg font-semibold">💚 วิเคราะห์แหล่งที่มาของรายรับ</h2>
+      <div class="text-xs text-slate-500">นับเฉพาะรายการที่เป็นรายรับ (amount &gt; 0) — ไม่รวมหมวดออม/ลงทุน</div>
+    </div>
+    <div id="incomeKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+    <div class="grid lg:grid-cols-2 gap-6 mb-4">
+      <div>
+        <h3 class="text-sm font-semibold mb-2 text-slate-600">🍩 สัดส่วนรายรับตามหมวด</h3>
+        <div class="relative h-72"><canvas id="incomeCatDoughnut"></canvas></div>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold mb-2 text-slate-600">📊 รายรับรายเดือน (แยกตามหมวด)</h3>
+        <div class="relative h-72"><canvas id="incomeMonthlyStacked"></canvas></div>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <h3 class="text-sm font-semibold mb-2 text-slate-600">📋 รายละเอียดแหล่งรายรับ</h3>
+      <table class="tbl w-full text-sm" id="incomeSourceTable"></table>
+    </div>
+    <p id="incomeSummary" class="text-sm text-slate-600 mt-3"></p>
+  </section>
+
   <!-- Savings / Investment Tracker -->
   <section class="card p-5 mb-6">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -603,6 +627,53 @@ function groupByAccount(rows) {
   return new Map([...map.entries()].sort((a, b) => b[1] - a[1]));
 }
 
+function groupByIncomeCategory(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    if (r.isSavings) continue;
+    if (r.amount <= 0) continue;
+    const k = r.category || '(ไม่ระบุ)';
+    if (!map.has(k)) {
+      map.set(k, { sum: 0, count: 0, accounts: new Map(), months: new Set(), last: null });
+    }
+    const o = map.get(k);
+    o.sum += r.amount;
+    o.count++;
+    const acc = r.account || '(ไม่ระบุ)';
+    o.accounts.set(acc, (o.accounts.get(acc) || 0) + r.amount);
+    o.months.add(r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0'));
+    if (!o.last || r.date > o.last) o.last = r.date;
+  }
+  return new Map([...map.entries()].sort((a, b) => b[1].sum - a[1].sum));
+}
+
+function groupByIncomeAccount(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    if (r.isSavings) continue;
+    if (r.amount <= 0) continue;
+    const k = r.account || '(ไม่ระบุ)';
+    map.set(k, (map.get(k) || 0) + r.amount);
+  }
+  return new Map([...map.entries()].sort((a, b) => b[1] - a[1]));
+}
+
+function groupIncomeByMonthAndCategory(rows, topCats) {
+  const map = new Map();
+  const topSet = new Set(topCats);
+  for (const r of rows) {
+    if (r.isSavings) continue;
+    if (r.amount <= 0) continue;
+    const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
+    if (!map.has(key)) map.set(key, {});
+    const o = map.get(key);
+    const cat = r.category || '(ไม่ระบุ)';
+    const bucket = topSet.has(cat) ? cat : 'อื่นๆ';
+    o[bucket] = (o[bucket] || 0) + r.amount;
+  }
+  return new Map([...map.entries()].sort());
+}
+
 function groupByDayOfWeek(rows) {
   const arr = [0, 0, 0, 0, 0, 0, 0];
   const cnt = [0, 0, 0, 0, 0, 0, 0];
@@ -841,6 +912,150 @@ function renderDowBar() {
 }
 
 /* =========================================================
+ *  RENDER — INCOME SOURCE ANALYSIS
+ * ========================================================= */
+function renderIncomeSources() {
+  const cats = groupByIncomeCategory(state.filtered);
+  const accounts = groupByIncomeAccount(state.filtered);
+  const total = [...cats.values()].reduce((s, o) => s + o.sum, 0);
+  const incomeRows = state.filtered.filter(r => !r.isSavings && r.amount > 0);
+  const totalCount = incomeRows.reduce((s, r) => s + 1, 0);
+
+  // KPI cards
+  const monthMap = groupByMonth(state.filtered);
+  const monthsWithIncome = [...monthMap.values()].filter(m => m.income > 0).length;
+  const avgPerMonth = monthsWithIncome > 0 ? total / monthsWithIncome : 0;
+  const topCat = [...cats.entries()][0];
+  const topAcc = [...accounts.entries()][0];
+  const topPct = (topCat && total > 0) ? (topCat[1].sum / total * 100) : 0;
+  const concentration = (topCat && total > 0) ? topPct : 0;
+
+  const kpiCards = [
+    { title: 'รายรับรวม', val: fmtTHB.format(total), sub: fmtNum.format(totalCount) + ' รายการ', emoji: '💚', cls: 'text-income' },
+    { title: 'แหล่งใหญ่ที่สุด', val: topCat ? topCat[0] : '-', sub: topCat ? fmtTHB.format(topCat[1].sum) + ' (' + topPct.toFixed(1) + '%)' : '', emoji: '🏆', cls: 'text-brand' },
+    { title: 'บัญชีรับเงินหลัก', val: topAcc ? topAcc[0] : '-', sub: topAcc ? fmtTHB.format(topAcc[1]) : '', emoji: '🏦', cls: 'text-indigo-600' },
+    { title: 'รายรับเฉลี่ย/เดือน', val: fmtTHB.format(avgPerMonth), sub: monthsWithIncome + ' เดือนที่มีรายรับ', emoji: '📅', cls: 'text-slate-700' },
+  ];
+  document.getElementById('incomeKpi').innerHTML = kpiCards.map(c => `
+    <div class="border border-slate-200 rounded-lg p-3">
+      <div class="text-xs text-slate-500">${c.emoji} ${c.title}</div>
+      <div class="text-lg font-bold ${c.cls}" title="${escapeHtml(String(c.val))}">${escapeHtml(String(c.val))}</div>
+      ${c.sub ? `<div class="text-xs text-slate-500 mt-0.5">${escapeHtml(c.sub)}</div>` : ''}
+    </div>
+  `).join('');
+
+  if (cats.size === 0) {
+    renderChart('incomeCatDoughnut', document.getElementById('incomeCatDoughnut'), { type:'doughnut', data:{ labels:[], datasets:[] }, options:{} });
+    renderChart('incomeMonthlyStacked', document.getElementById('incomeMonthlyStacked'), { type:'bar', data:{ labels:[], datasets:[] }, options:{} });
+    document.getElementById('incomeSourceTable').innerHTML = '<tr><td class="text-sm text-slate-500 py-3">ยังไม่พบรายการรายรับในช่วงที่เลือก</td></tr>';
+    document.getElementById('incomeSummary').textContent = '';
+    return;
+  }
+
+  // Doughnut: top 8 + others
+  const entries = [...cats.entries()];
+  const TOP_N = 8;
+  const top = entries.slice(0, TOP_N);
+  const otherSum = entries.slice(TOP_N).reduce((s, e) => s + e[1].sum, 0);
+  const dLabels = top.map(e => e[0]).concat(otherSum > 0 ? ['อื่นๆ'] : []);
+  const dData = top.map(e => e[1].sum).concat(otherSum > 0 ? [otherSum] : []);
+  const incomeColors = ['#10B981','#059669','#34D399','#06B6D4','#3B82F6','#6366F1','#8B5CF6','#A78BFA','#94A3B8'];
+
+  renderChart('incomeCatDoughnut', document.getElementById('incomeCatDoughnut'), {
+    type: 'doughnut',
+    data: { labels: dLabels, datasets: [{ data: dData, backgroundColor: incomeColors.slice(0, dLabels.length), borderWidth: 2, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { family: 'Sarabun', size: 11 } } },
+        tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtTHB.format(c.parsed) + ' (' + (c.parsed / dData.reduce((a, b) => a + b, 0) * 100).toFixed(1) + '%)' } }
+      }
+    }
+  });
+
+  // Monthly stacked bar (top 6 categories + others)
+  const STACK_N = 6;
+  const stackTopCats = entries.slice(0, STACK_N).map(e => e[0]);
+  const monthCatMap = groupIncomeByMonthAndCategory(state.filtered, stackTopCats);
+  const monthKeys = [...monthCatMap.keys()];
+  const stackBuckets = stackTopCats.concat(entries.length > STACK_N ? ['อื่นๆ'] : []);
+  const stackDatasets = stackBuckets.map((bucket, i) => ({
+    label: bucket,
+    data: monthKeys.map(k => monthCatMap.get(k)[bucket] || 0),
+    backgroundColor: incomeColors[i % incomeColors.length],
+    borderRadius: 3,
+    stack: 'income',
+  }));
+
+  renderChart('incomeMonthlyStacked', document.getElementById('incomeMonthlyStacked'), {
+    type: 'bar',
+    data: { labels: monthKeys.map(monthLabel), datasets: stackDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'Sarabun', size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtTHB.format(c.parsed.y) } },
+      },
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, ticks: { callback: (v) => abbrev(v) } },
+      },
+    },
+  });
+
+  // Detail table
+  let html = '<thead><tr class="text-left text-xs text-slate-500 border-b">';
+  html += '<th class="py-2 pr-3">#</th>';
+  html += '<th class="py-2 pr-3">หมวดรายรับ</th>';
+  html += '<th class="py-2 px-2 text-right">จำนวนเงิน</th>';
+  html += '<th class="py-2 px-2 text-right">% ของรายรับ</th>';
+  html += '<th class="py-2 px-2 text-right">รายการ</th>';
+  html += '<th class="py-2 px-2 text-right">เฉลี่ย/รายการ</th>';
+  html += '<th class="py-2 px-2 text-right">เดือนที่มี</th>';
+  html += '<th class="py-2 pl-2">บัญชีหลัก</th>';
+  html += '</tr></thead><tbody>';
+  let rank = 0;
+  for (const [cat, o] of entries) {
+    rank++;
+    const pct = total > 0 ? (o.sum / total * 100) : 0;
+    const avg = o.count > 0 ? o.sum / o.count : 0;
+    const topAccountForCat = [...o.accounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const accLabel = topAccountForCat ? topAccountForCat[0] : '-';
+    html += '<tr class="border-b border-slate-100">';
+    html += '<td class="py-1.5 pr-3 text-slate-500">' + rank + '</td>';
+    html += '<td class="py-1.5 pr-3 font-medium">' + escapeHtml(cat) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums text-income font-semibold">' + fmtTHB.format(o.sum) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums">' + pct.toFixed(1) + '%</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums">' + fmtNum.format(o.count) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums">' + fmtTHB.format(avg) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums">' + o.months.size + '</td>';
+    html += '<td class="py-1.5 pl-2 text-xs text-slate-600">' + escapeHtml(accLabel) + '</td>';
+    html += '</tr>';
+  }
+  html += '</tbody><tfoot><tr class="border-t-2 border-slate-300 font-bold bg-slate-50">';
+  html += '<td class="py-2 pr-3"></td>';
+  html += '<td class="py-2 pr-3">รวมทั้งหมด</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums text-income">' + fmtTHB.format(total) + '</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums">100.0%</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums">' + fmtNum.format(totalCount) + '</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums">' + fmtTHB.format(totalCount > 0 ? total / totalCount : 0) + '</td>';
+  html += '<td class="py-2 px-2"></td>';
+  html += '<td class="py-2 pl-2"></td>';
+  html += '</tr></tfoot>';
+  document.getElementById('incomeSourceTable').innerHTML = html;
+
+  // Summary line
+  const concNote = concentration >= 70
+    ? `⚠️ พึ่งพาแหล่งเดียวสูง — <b>${escapeHtml(topCat[0])}</b> คิดเป็น <b>${concentration.toFixed(1)}%</b> ของรายรับทั้งหมด`
+    : concentration >= 40
+      ? `📌 แหล่งหลักคือ <b>${escapeHtml(topCat[0])}</b> (${concentration.toFixed(1)}%) — ลองกระจายความเสี่ยงด้วยรายรับเสริม`
+      : `✅ รายรับกระจายดี — แหล่งใหญ่สุด <b>${escapeHtml(topCat[0])}</b> เพียง ${concentration.toFixed(1)}%`;
+  document.getElementById('incomeSummary').innerHTML =
+    `${concNote} · มี <b>${cats.size}</b> หมวดรายรับ · จาก <b>${accounts.size}</b> บัญชี`;
+}
+
+/* =========================================================
  *  RENDER — FORECAST + BURN RATE
  * ========================================================= */
 function renderForecast() {
@@ -1028,6 +1243,25 @@ function renderMoM() {
   }).filter(r => r.last > 0 || r.prev > 0)
     .sort((a, b) => (isFinite(b.change) ? b.change : 1e9) - (isFinite(a.change) ? a.change : 1e9));
 
+  // Monthly totals computed from the same data shown above (sum across all expense categories, savings excluded)
+  const monthTotals = {};
+  for (const k of keys) {
+    let sum = 0;
+    for (const [, vals] of catMap) sum += (vals[k] || 0);
+    monthTotals[k] = sum;
+  }
+  const lastTotal = monthTotals[keys[keys.length - 1]] || 0;
+  const prevTotal = monthTotals[keys[keys.length - 2]] || 0;
+  const totalChange = prevTotal > 0
+    ? ((lastTotal - prevTotal) / prevTotal) * 100
+    : (lastTotal > 0 ? Infinity : 0);
+  const totalCls = !isFinite(totalChange)
+    ? 'text-expense'
+    : (totalChange > 0 ? 'text-expense' : (totalChange < 0 ? 'text-income' : 'text-slate-500'));
+  const totalSym = !isFinite(totalChange)
+    ? '+∞'
+    : (totalChange >= 0 ? '+' : '') + totalChange.toFixed(0) + '%';
+
   let html = '<thead><tr class="text-left text-xs text-slate-500 border-b">';
   html += '<th class="py-2 pr-3">หมวด</th>';
   for (const k of keys) html += '<th class="py-2 px-2 text-right">' + monthLabel(k) + '</th>';
@@ -1044,7 +1278,14 @@ function renderMoM() {
     html += '<td class="py-1.5 pl-2 text-right font-semibold ' + cls + '">' + sym + '</td>';
     html += '</tr>';
   }
-  html += '</tbody>';
+  html += '</tbody><tfoot><tr class="border-t-2 border-slate-300 font-bold bg-slate-50">';
+  html += '<td class="py-2 pr-3">รายจ่ายรวมสุทธิ</td>';
+  for (const k of keys) {
+    const v = monthTotals[k] || 0;
+    html += '<td class="py-2 px-2 text-right tabular-nums text-expense">' + (v > 0 ? fmtNum.format(Math.round(v)) : '-') + '</td>';
+  }
+  html += '<td class="py-2 pl-2 text-right ' + totalCls + '">' + totalSym + '</td>';
+  html += '</tr></tfoot>';
   document.getElementById('momTable').innerHTML = html;
 }
 
@@ -1362,6 +1603,7 @@ function refresh() {
   renderTopCatBar();
   renderAccountBar();
   renderDowBar();
+  renderIncomeSources();
   renderForecast();
   renderSavings();
   renderMoM();
