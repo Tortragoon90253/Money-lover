@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<title>เลือก Favicon — Money Lover</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; margin: 0; padding: 40px; }
+  h1 { text-align: center; color: #1e293b; margin-bottom: 8px; }
+  p  { text-align: center; color: #64748b; margin-bottom: 40px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; }
+  .card {
+    background: white; border-radius: 20px; padding: 32px 28px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08); text-align: center;
+    cursor: pointer; transition: transform .2s, box-shadow .2s;
+    width: 200px; border: 3px solid transparent;
+  }
+  .card:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(79,70,229,0.18); border-color: #4F46E5; }
+  .card .badge { font-size: 13px; font-weight: 700; color: #4F46E5; margin-bottom: 16px; letter-spacing: 1px; }
+  .card .name { font-size: 15px; font-weight: 600; color: #1e293b; margin: 14px 0 6px; }
+  .card .desc { font-size: 13px; color: #64748b; line-height: 1.5; }
+  /* Simulate browser tab */
+  .tab-sim {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #e2e8f0; border-radius: 8px 8px 0 0;
+    padding: 6px 14px; font-size: 12px; color: #475569;
+    margin-top: 16px; border: 1px solid #cbd5e1; border-bottom: none;
+  }
+  .tab-sim img { width: 16px; height: 16px; }
+  .sizes { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 8px 0; }
+  .sizes img { border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>🎨 เลือก Logo สำหรับ Browser Tab</h1>
+<p>คลิกที่แบบที่ชอบ — แจ้งหมายเลขกลับมาได้เลย</p>
+<div class="grid">
+
+  <!-- 1 -->
+  <div class="card">
+    <div class="badge">แบบที่ 1</div>
+    <div class="sizes">
+      <img src="favicon-1.svg" width="48" height="48" alt="logo1-48"/>
+      <img src="favicon-1.svg" width="32" height="32" alt="logo1-32"/>
+      <img src="favicon-1.svg" width="16" height="16" alt="logo1-16"/>
+    </div>
+    <div class="tab-sim"><img src="favicon-1.svg" alt=""/>Money Lover Analytics</div>
+    <div class="name">เหรียญ + แท่งกราฟ</div>
+    <div class="desc">วงกลม indigo พร้อมเหรียญทองและแท่งกราฟสีเขียว สื่อถึงรายรับที่เพิ่มขึ้น</div>
+  </div>
+
+  <!-- 2 -->
+  <div class="card">
+    <div class="badge">แบบที่ 2</div>
+    <div class="sizes">
+      <img src="favicon-2.svg" width="48" height="48" alt="logo2-48"/>
+      <img src="favicon-2.svg" width="32" height="32" alt="logo2-32"/>
+      <img src="favicon-2.svg" width="16" height="16" alt="logo2-16"/>
+    </div>
+    <div class="tab-sim"><img src="favicon-2.svg" alt=""/>Money Lover Analytics</div>
+    <div class="name">กระเป๋าเงิน + หัวใจ</div>
+    <div class="desc">Money Bag พร้อมหัวใจสีแดง ตรงกับชื่อ "Money Lover" โดยตรง</div>
+  </div>
+
+  <!-- 3 -->
+  <div class="card">
+    <div class="badge">แบบที่ 3</div>
+    <div class="sizes">
+      <img src="favicon-3.svg" width="48" height="48" alt="logo3-48"/>
+      <img src="favicon-3.svg" width="32" height="32" alt="logo3-32"/>
+      <img src="favicon-3.svg" width="16" height="16" alt="logo3-16"/>
+    </div>
+    <div class="tab-sim"><img src="favicon-3.svg" alt=""/>Money Lover Analytics</div>
+    <div class="name">กราฟขาขึ้น + เหรียญ</div>
+    <div class="desc">แท่งกราฟไล่ระดับพร้อมเส้น trend ขาขึ้น เน้นการวิเคราะห์ทางการเงิน</div>
+  </div>
+
+  <!-- 4 -->
+  <div class="card">
+    <div class="badge">แบบที่ 4</div>
+    <div class="sizes">
+      <img src="favicon-4.svg" width="48" height="48" alt="logo4-48"/>
+      <img src="favicon-4.svg" width="32" height="32" alt="logo4-32"/>
+      <img src="favicon-4.svg" width="16" height="16" alt="logo4-16"/>
+    </div>
+    <div class="tab-sim"><img src="favicon-4.svg" alt=""/>Money Lover Analytics</div>
+    <div class="name">กระเป๋าสตางค์</div>
+    <div class="desc">Wallet ดีไซน์สะอาดตา พร้อมช่องเหรียญสีม่วง เหมาะกับแอปการเงิน</div>
+  </div>
+
+  <!-- 5 -->
+  <div class="card">
+    <div class="badge">แบบที่ 5</div>
+    <div class="sizes">
+      <img src="favicon-5.svg" width="48" height="48" alt="logo5-48"/>
+      <img src="favicon-5.svg" width="32" height="32" alt="logo5-32"/>
+      <img src="favicon-5.svg" width="16" height="16" alt="logo5-16"/>
+    </div>
+    <div class="tab-sim"><img src="favicon-5.svg" alt=""/>Money Lover Analytics</div>
+    <div class="name">ML Badge (โลโก้ตัวอักษร)</div>
+    <div class="desc">ตัวย่อ ML พร้อมสัญลักษณ์ ฿ ไล่สี Gradient สามสี ดูเป็นแบรนด์</div>
+  </div>
+
+</div>
+</body>
+</html>
