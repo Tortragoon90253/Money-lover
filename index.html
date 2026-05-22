@@ -173,9 +173,20 @@
       <div class="relative h-80"><canvas id="catDoughnut"></canvas></div>
     </div>
     <div class="card p-5">
-      <h2 class="text-lg font-semibold mb-3">🔝 Top 15 หมวดที่ใช้มากสุด</h2>
+      <h2 class="text-lg font-semibold mb-1">🔝 Top 15 หมวดที่ใช้มากสุด</h2>
+      <p class="text-xs text-slate-400 mb-2">คลิ๊กที่แถบเพื่อดูรายละเอียดรายเดือน</p>
       <div class="relative h-80"><canvas id="topCatBar"></canvas></div>
     </div>
+  </section>
+
+  <!-- Category Detail Drill-down -->
+  <section id="catDetailSection" class="card p-5 mb-6 hidden">
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <h2 class="text-lg font-semibold">📊 <span id="catDetailTitle">หมวด</span> — รายจ่ายรายเดือน & พยากรณ์</h2>
+      <button id="catDetailClose" class="text-sm text-slate-400 hover:text-slate-700 px-3 py-1 rounded border border-slate-200 hover:border-slate-400 transition">✕ ปิด</button>
+    </div>
+    <div class="relative h-72"><canvas id="catDetailLine"></canvas></div>
+    <div id="catDetailSummary" class="text-sm text-slate-600 mt-3"></div>
   </section>
 
   <!-- Account + DoW -->
@@ -185,7 +196,7 @@
       <div class="relative h-72"><canvas id="accountBar"></canvas></div>
     </div>
     <div class="card p-5">
-      <h2 class="text-lg font-semibold mb-3">📅 รายจ่ายแยกตามวันในสัปดาห์</h2>
+      <h2 class="text-lg font-semibold mb-3">📅 รายจ่ายแยกตามสัปดาห์</h2>
       <div class="relative h-72"><canvas id="dowBar"></canvas></div>
     </div>
   </section>
@@ -494,6 +505,7 @@ const state = {
   txnPerPage: 50,
   txnSort: { col: 'date', dir: 'desc' },
   txnSearch: '',
+  selectedCategory: null,
 };
 
 const INTERNAL_CATEGORIES = new Set(['โอนเงินเข้า','โอนเงินออก']);
@@ -616,6 +628,19 @@ function groupByCategory(rows, expenseOnly = true) {
   return new Map([...map.entries()].sort((a, b) => b[1].sum - a[1].sum));
 }
 
+function groupCategoryByMonth(rows, category) {
+  const map = new Map();
+  for (const r of rows) {
+    if (r.isSavings) continue;
+    if (r.amount >= 0) continue;
+    if ((r.category || '(ไม่ระบุ)') !== category) continue;
+    const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
+    if (!map.has(key)) map.set(key, 0);
+    map.set(key, map.get(key) + Math.abs(r.amount));
+  }
+  return new Map([...map.entries()].sort());
+}
+
 function groupByAccount(rows) {
   const map = new Map();
   for (const r of rows) {
@@ -686,6 +711,28 @@ function groupByDayOfWeek(rows) {
     cnt[d]++;
   }
   return { sums: arr, counts: cnt };
+}
+
+function groupByWeek(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    if (r.isSavings) continue;
+    if (r.amount >= 0) continue;
+    const d = new Date(r.date);
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    const key = d.toISOString().slice(0, 10);
+    if (!map.has(key)) {
+      const label = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+      map.set(key, { sum: 0, count: 0, label });
+    }
+    const o = map.get(key);
+    o.sum += Math.abs(r.amount);
+    o.count++;
+  }
+  return new Map([...map.entries()].sort());
 }
 
 function groupByDay(rows) {
@@ -863,12 +910,19 @@ function renderTopCatBar() {
   const top = [...cats.entries()].slice(0, 15);
   const labels = top.map(e => e[0]);
   const data = top.map(e => e[1].sum);
+  const bgColors = labels.map(l => l === state.selectedCategory ? '#BE123C' : '#F43F5E');
   renderChart('topCatBar', document.getElementById('topCatBar'), {
     type: 'bar',
-    data: { labels, datasets: [{ data, backgroundColor:'#F43F5E', borderRadius:4 }] },
+    data: { labels, datasets: [{ data, backgroundColor: bgColors, borderRadius:4 }] },
     options: {
       indexAxis: 'y',
       responsive: true, maintainAspectRatio: false,
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const cat = labels[elements[0].index];
+        renderCategoryDetail(cat);
+        renderTopCatBar();
+      },
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.x) } } },
       scales: {
         x: { ticks: { callback: (v) => abbrev(v) } },
@@ -876,6 +930,68 @@ function renderTopCatBar() {
       }
     }
   });
+}
+
+function renderCategoryDetail(category) {
+  state.selectedCategory = category;
+  const sec = document.getElementById('catDetailSection');
+  document.getElementById('catDetailTitle').textContent = category;
+  sec.classList.remove('hidden');
+  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const byMonth = groupCategoryByMonth(state.filtered, category);
+  const keys = [...byMonth.keys()];
+  const expenses = [...byMonth.values()];
+
+  if (keys.length < 2) {
+    document.getElementById('catDetailSummary').textContent = 'ข้อมูลไม่เพียงพอสำหรับการพยากรณ์ (ต้องมีอย่างน้อย 2 เดือน)';
+    renderChart('catDetail', document.getElementById('catDetailLine'), { type:'line', data:{ labels:[], datasets:[] }, options:{} });
+    return;
+  }
+
+  const reg = linearRegression(expenses);
+  const futureKeys = [];
+  let last = keys[keys.length - 1];
+  for (let i = 0; i < 3; i++) { last = nextMonthKey(last); futureKeys.push(last); }
+
+  const allLabels = keys.concat(futureKeys);
+  const histData = expenses.concat([null, null, null]);
+  const futureData = Array(keys.length).fill(null);
+  const futurePlus = Array(keys.length).fill(null);
+  const futureMinus = Array(keys.length).fill(null);
+
+  for (let i = 0; i < 3; i++) {
+    const x = keys.length + i;
+    const yhat = Math.max(0, reg.slope * x + reg.intercept);
+    futureData.push(yhat);
+    futurePlus.push(Math.max(0, yhat + reg.std));
+    futureMinus.push(Math.max(0, yhat - reg.std));
+  }
+  futureData[keys.length - 1] = expenses[expenses.length - 1];
+  futurePlus[keys.length - 1] = expenses[expenses.length - 1];
+  futureMinus[keys.length - 1] = expenses[expenses.length - 1];
+
+  renderChart('catDetail', document.getElementById('catDetailLine'), {
+    type: 'line',
+    data: {
+      labels: allLabels,
+      datasets: [
+        { label:'รายจ่ายจริง', data: histData, borderColor:'#4F46E5', backgroundColor:'rgba(79,70,229,.1)', fill:true, tension:.35, pointRadius:4 },
+        { label:'พยากรณ์',    data: futureData, borderColor:'#F59E0B', borderDash:[5,5], backgroundColor:'transparent', tension:.35, pointRadius:5 },
+        { label:'+1σ', data: futurePlus,  borderColor:'rgba(245,158,11,.4)', backgroundColor:'rgba(245,158,11,.1)', fill:'+1', pointRadius:0, borderWidth:1 },
+        { label:'-1σ', data: futureMinus, borderColor:'rgba(245,158,11,.4)', backgroundColor:'transparent',         fill:false, pointRadius:0, borderWidth:1 },
+      ]
+    },
+    options: chartOpts({ ySymbol: true })
+  });
+
+  const avg = expenses.reduce((a, b) => a + b, 0) / expenses.length;
+  const trend = reg.slope >= 0 ? 'เพิ่มขึ้น 📈' : 'ลดลง 📉';
+  const nextForecast = Math.max(0, reg.slope * keys.length + reg.intercept);
+  document.getElementById('catDetailSummary').innerHTML =
+    `ค่าเฉลี่ยต่อเดือน: <b>${fmtTHB.format(avg)}</b>  ·  ` +
+    `แนวโน้ม: ${trend} (${fmtTHB.format(reg.slope)}/เดือน, R²=${reg.rSquared.toFixed(2)})  ·  ` +
+    `คาดการณ์เดือนหน้า: <b>${fmtTHB.format(nextForecast)}</b>`;
 }
 
 /* =========================================================
@@ -895,19 +1011,25 @@ function renderAccountBar() {
   });
 }
 
-function renderDowBar() {
-  const { sums, counts } = groupByDayOfWeek(state.filtered);
-  const labels = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+function renderWeekBar() {
+  const byWeek = groupByWeek(state.filtered);
+  const entries = [...byWeek.entries()];
+  const labels = entries.map(e => e[1].label);
+  const data   = entries.map(e => e[1].sum);
+  const counts = entries.map(e => e[1].count);
   renderChart('dowBar', document.getElementById('dowBar'), {
     type: 'bar',
-    data: { labels, datasets: [{ data: sums, backgroundColor:'#7C3AED', borderRadius:4 }] },
+    data: { labels, datasets: [{ data, backgroundColor:'#7C3AED', borderRadius:4 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.y) + ' · ' + counts[c.dataIndex] + ' รายการ' } }
       },
-      scales: { y: { ticks: { callback: (v) => abbrev(v) } } }
+      scales: {
+        y: { ticks: { callback: (v) => abbrev(v) } },
+        x: { ticks: { font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 20 } }
+      }
     }
   });
 }
@@ -1538,6 +1660,12 @@ function setupFilterUI() {
   document.querySelectorAll('.preset-btn').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
   document.getElementById('includeInternal').addEventListener('change', e => { state.filters.includeInternal = e.target.checked; refresh(); });
   document.getElementById('includeCreditPay').addEventListener('change', e => { state.filters.includeCreditPay = e.target.checked; refresh(); });
+  document.getElementById('catDetailClose').addEventListener('click', () => {
+    state.selectedCategory = null;
+    document.getElementById('catDetailSection').classList.add('hidden');
+    renderTopCatBar();
+  });
+
   document.getElementById('resetBtn').addEventListener('click', () => {
     setDefaults();
     document.getElementById('includeInternal').checked = false;
@@ -1602,8 +1730,9 @@ function refresh() {
   renderTrendChart();
   renderCategoryDoughnut();
   renderTopCatBar();
+  if (state.selectedCategory) renderCategoryDetail(state.selectedCategory);
   renderAccountBar();
-  renderDowBar();
+  renderWeekBar();
   renderIncomeSources();
   renderForecast();
   renderSavings();
