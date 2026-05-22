@@ -57,6 +57,22 @@
   .drag-active { background:#EEF2FF !important; border-color:#4F46E5 !important; }
   /* sticky filter shadow */
   .sticky-filter { backdrop-filter: saturate(180%) blur(8px); background:rgba(248,250,252,.85); }
+  /* info tooltip icon */
+  .info-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:15px; height:15px; border-radius:50%;
+    background:#e2e8f0; color:#64748b;
+    font-size:9px; font-style:normal; font-weight:700;
+    cursor:default; flex-shrink:0; user-select:none;
+  }
+  #chartTip {
+    position:fixed; z-index:9999; max-width:260px; padding:8px 12px;
+    background:#1e293b; color:#f1f5f9; border-radius:8px;
+    font-size:12px; line-height:1.55; font-family:'Sarabun',sans-serif;
+    pointer-events:none; opacity:0; transition:opacity .15s;
+    box-shadow:0 4px 12px rgba(0,0,0,.35);
+  }
+  #chartTip.show { opacity:1; }
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -160,7 +176,7 @@
   <!-- Trend Chart -->
   <section class="card p-5 mb-6">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <h2 class="text-lg font-semibold">📈 แนวโน้มรายเดือน</h2>
+      <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">📈 แนวโน้มรายเดือน</h2><i class="info-btn" data-tip="แสดงรายรับ รายจ่าย และยอดสุทธิแต่ละเดือน เส้นประ = ค่าเฉลี่ยเคลื่อนที่ 3 เดือน ใช้ดูทิศทางการเงินโดยรวมว่าดีขึ้นหรือแย่ลง">i</i></div>
       <div class="text-xs text-slate-500">เส้นประ = ค่าเฉลี่ยเคลื่อนที่ 3 เดือน</div>
     </div>
     <div class="relative h-80"><canvas id="trendChart"></canvas></div>
@@ -169,11 +185,11 @@
   <!-- Category + Top -->
   <section class="grid lg:grid-cols-2 gap-6 mb-6">
     <div class="card p-5">
-      <h2 class="text-lg font-semibold mb-3">🍩 สัดส่วนรายจ่ายตามหมวด</h2>
+      <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🍩 สัดส่วนรายจ่ายตามหมวด</h2><i class="info-btn" data-tip="แสดงสัดส่วน (%) ของรายจ่ายในแต่ละหมวด ช่วยบอกว่าเงินส่วนใหญ่หายไปอยู่ที่หมวดไหน คลิ๊กที่ legend เพื่อซ่อน/แสดงหมวด">i</i></div>
       <div class="relative h-80"><canvas id="catDoughnut"></canvas></div>
     </div>
     <div class="card p-5">
-      <h2 class="text-lg font-semibold mb-1">🔝 Top 15 หมวดที่ใช้มากสุด</h2>
+      <div class="flex items-center gap-1.5 mb-1"><h2 class="text-lg font-semibold">🔝 Top 15 หมวดที่ใช้มากสุด</h2><i class="info-btn" data-tip="เรียงหมวดรายจ่ายจากมากไปน้อย 15 อันดับ คลิ๊กที่แถบเพื่อเปิดกราฟรายเดือนและพยากรณ์ค่าใช้จ่ายของหมวดนั้น">i</i></div>
       <p class="text-xs text-slate-400 mb-2">คลิ๊กที่แถบเพื่อดูรายละเอียดรายเดือน</p>
       <div class="relative h-80"><canvas id="topCatBar"></canvas></div>
     </div>
@@ -182,7 +198,7 @@
   <!-- Category Detail Drill-down -->
   <section id="catDetailSection" class="card p-5 mb-6 hidden">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <h2 class="text-lg font-semibold">📊 <span id="catDetailTitle">หมวด</span> — รายจ่ายรายเดือน & พยากรณ์</h2>
+      <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">📊 <span id="catDetailTitle">หมวด</span> — รายจ่ายรายเดือน & พยากรณ์</h2><i class="info-btn" data-tip="กราฟเส้นรายจ่ายรายเดือนของหมวดที่เลือก เส้นประสีเหลือง = พยากรณ์ 3 เดือน (Linear Regression) แถบสีจาง = ช่วงความเชื่อมั่น ±1σ">i</i></div>
       <button id="catDetailClose" class="text-sm text-slate-400 hover:text-slate-700 px-3 py-1 rounded border border-slate-200 hover:border-slate-400 transition">✕ ปิด</button>
     </div>
     <div class="relative h-72"><canvas id="catDetailLine"></canvas></div>
@@ -192,11 +208,11 @@
   <!-- Account + DoW -->
   <section class="grid lg:grid-cols-2 gap-6 mb-6">
     <div class="card p-5">
-      <h2 class="text-lg font-semibold mb-3">🏦 รายจ่ายแยกตามบัญชี</h2>
+      <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🏦 รายจ่ายแยกตามบัญชี</h2><i class="info-btn" data-tip="รวมรายจ่ายแยกตามบัญชีธนาคาร ช่วยดูว่าบัญชีไหนถูกใช้จ่ายมากที่สุดในช่วงเวลาที่เลือก">i</i></div>
       <div class="relative h-72"><canvas id="accountBar"></canvas></div>
     </div>
     <div class="card p-5">
-      <h2 class="text-lg font-semibold mb-3">📅 รายจ่ายแยกตามสัปดาห์</h2>
+      <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">📅 รายจ่ายแยกตามสัปดาห์</h2><i class="info-btn" data-tip="รวมรายจ่ายแต่ละสัปดาห์ตามปฏิทิน (เริ่มวันจันทร์) X-axis คือวันเริ่มต้นสัปดาห์ ใช้ดูสัปดาห์ที่มีการใช้จ่ายสูงผิดปกติ">i</i></div>
       <div class="relative h-72"><canvas id="dowBar"></canvas></div>
     </div>
   </section>
@@ -204,31 +220,40 @@
   <!-- Income Source Analysis -->
   <section class="card p-5 mb-6">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <h2 class="text-lg font-semibold">💚 วิเคราะห์แหล่งที่มาของรายรับ</h2>
+      <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">💚 วิเคราะห์แหล่งที่มาของรายรับ</h2><i class="info-btn" data-tip="วิเคราะห์รายรับทั้งหมดแยกตามหมวด บัญชี และเดือน ดูว่ารายได้มาจากแหล่งใดและมีความหลากหลายเพียงพอหรือไม่ คลิ๊กที่แถวในตารางเพื่อดูกราฟรายเดือน">i</i></div>
       <div class="text-xs text-slate-500">นับเฉพาะรายการที่เป็นรายรับ (amount &gt; 0) — ไม่รวมหมวดออม/ลงทุน</div>
     </div>
     <div id="incomeKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
     <div class="grid lg:grid-cols-2 gap-6 mb-4">
       <div>
-        <h3 class="text-sm font-semibold mb-2 text-slate-600">🍩 สัดส่วนรายรับตามหมวด</h3>
+        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">🍩 สัดส่วนรายรับตามหมวด</h3><i class="info-btn" data-tip="สัดส่วนรายรับแยกตามหมวด เปรียบเทียบว่าแหล่งรายได้ไหนมีสัดส่วนมากน้อยแค่ไหน">i</i></div>
         <div class="relative h-72"><canvas id="incomeCatDoughnut"></canvas></div>
       </div>
       <div>
-        <h3 class="text-sm font-semibold mb-2 text-slate-600">📊 รายรับรายเดือน (แยกตามหมวด)</h3>
+        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">📊 รายรับรายเดือน (แยกตามหมวด)</h3><i class="info-btn" data-tip="กราฟแท่งซ้อน (stacked bar) แสดงรายรับรายเดือนแยกตามแต่ละหมวด ใช้ดูความสม่ำเสมอและการเปลี่ยนแปลงของรายได้">i</i></div>
         <div class="relative h-72"><canvas id="incomeMonthlyStacked"></canvas></div>
       </div>
     </div>
     <div class="overflow-x-auto">
-      <h3 class="text-sm font-semibold mb-2 text-slate-600">📋 รายละเอียดแหล่งรายรับ</h3>
+      <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">📋 รายละเอียดแหล่งรายรับ</h3><i class="info-btn" data-tip="ตารางสรุปรายรับแต่ละหมวด แสดงยอดรวม สัดส่วน จำนวนรายการ ค่าเฉลี่ย และบัญชีหลัก คลิ๊กที่แถวเพื่อดูกราฟรายเดือนของหมวดนั้น">i</i></div>
       <table class="tbl w-full text-sm" id="incomeSourceTable"></table>
     </div>
     <p id="incomeSummary" class="text-sm text-slate-600 mt-3"></p>
+    <!-- Income Category Detail -->
+    <div id="incomeCatDetailSection" class="hidden mt-4 pt-4 border-t border-slate-100">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h3 class="text-sm font-semibold text-slate-700">📈 <span id="incomeCatDetailTitle">หมวด</span> — รายรับรายเดือน</h3>
+        <button id="incomeCatDetailClose" class="text-xs text-slate-400 hover:text-slate-700 px-2 py-1 rounded border border-slate-200 hover:border-slate-400 transition">✕ ปิด</button>
+      </div>
+      <div class="relative h-64"><canvas id="incomeCatDetailLine"></canvas></div>
+      <div id="incomeCatDetailSummary" class="text-sm text-slate-600 mt-2"></div>
+    </div>
   </section>
 
   <!-- Savings / Investment Tracker -->
   <section class="card p-5 mb-6">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <h2 class="text-lg font-semibold">💎 ติดตามการออม / ลงทุนสะสม</h2>
+      <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">💎 ติดตามการออม / ลงทุนสะสม</h2><i class="info-btn" data-tip="ติดตามเงินที่โอนเข้าหมวดออม/ลงทุน กราฟเส้นแสดงยอดสะสมสุทธิ (ฝากออก − รับกลับ) ใช้ดูความก้าวหน้าในการออมเงิน">i</i></div>
       <div class="text-xs text-slate-500">นับเฉพาะหมวดที่กำหนดเป็น "เก็บออม/ลงทุน" — ไม่ถือเป็นค่าใช้จ่าย</div>
     </div>
     <div id="savingsKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
@@ -239,19 +264,19 @@
   <!-- Forecast & Burn rate -->
   <section class="grid lg:grid-cols-3 gap-6 mb-6">
     <div class="card p-5 lg:col-span-2">
-      <h2 class="text-lg font-semibold mb-3">🔮 พยากรณ์กระแสเงินสด (3 เดือนข้างหน้า)</h2>
+      <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🔮 พยากรณ์กระแสเงินสด (3 เดือนข้างหน้า)</h2><i class="info-btn" data-tip="ใช้ Linear Regression จากข้อมูลย้อนหลังพยากรณ์กระแสเงินสดสุทธิ 3 เดือนข้างหน้า เส้นประสีเหลือง = พยากรณ์ แถบสี = ช่วงความเชื่อมั่น ±1σ R² ยิ่งใกล้ 1 ยิ่งเชื่อถือได้">i</i></div>
       <div class="relative h-72"><canvas id="forecastChart"></canvas></div>
       <p id="forecastSummary" class="text-sm text-slate-600 mt-3"></p>
     </div>
     <div class="card p-5">
-      <h2 class="text-lg font-semibold mb-3">⏱️ Burn Rate</h2>
+      <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">⏱️ Burn Rate</h2><i class="info-btn" data-tip="คำนวณอัตราการใช้เงินสดจากรายจ่าย 30 วันล่าสุด ประมาณการว่าเงินคงเหลือในบัญชีเงินสดจะอยู่ได้อีกกี่วัน ตัวเลขแดง = น้อยกว่า 60 วัน ควรระวัง">i</i></div>
       <div id="burnRate" class="space-y-3"></div>
     </div>
   </section>
 
   <!-- MoM Table -->
   <section class="card p-5 mb-6">
-    <h2 class="text-lg font-semibold mb-3">📊 เปรียบเทียบ Month-over-Month (รายจ่าย)</h2>
+    <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">📊 เปรียบเทียบ Month-over-Month (รายจ่าย)</h2><i class="info-btn" data-tip="เปรียบเทียบรายจ่ายแต่ละหมวดระหว่าง 6 เดือนล่าสุด ตัวเลขแดง = ใช้จ่ายเพิ่มขึ้น ตัวเลขเขียว = ลดลง ใช้จับสัญญาณหมวดที่ค่าใช้จ่ายกำลังพุ่งสูงขึ้น">i</i></div>
     <div class="overflow-x-auto">
       <table class="tbl w-full text-sm" id="momTable"></table>
     </div>
@@ -259,7 +284,7 @@
 
   <!-- Events -->
   <section class="card p-5 mb-6">
-    <h2 class="text-lg font-semibold mb-3">🎉 วิเคราะห์ Event</h2>
+    <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🎉 วิเคราะห์ Event</h2><i class="info-btn" data-tip="รวบรวมรายจ่ายที่ติด Event Tag เดียวกัน ช่วยดูต้นทุนรวมของแต่ละกิจกรรมหรือเหตุการณ์ เช่น ทริปเที่ยว งานแต่งงาน เทศกาล">i</i></div>
     <div class="overflow-x-auto">
       <table class="tbl w-full text-sm" id="eventTable"></table>
     </div>
@@ -267,7 +292,7 @@
 
   <!-- Insights -->
   <section class="card p-5 mb-6 bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-    <h2 class="text-lg font-semibold mb-3">💡 Insights อัตโนมัติ</h2>
+    <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">💡 Insights อัตโนมัติ</h2><i class="info-btn" data-tip="ระบบตรวจจับรูปแบบอัตโนมัติ เช่น หมวดที่ค่าใช้จ่ายพุ่งขึ้นผิดปกติ เดือนที่ใช้จ่ายสูงสุด หรือวันในสัปดาห์ที่มักจ่ายมากที่สุด">i</i></div>
     <ul id="insightsList" class="space-y-2 text-sm"></ul>
   </section>
 
@@ -506,6 +531,7 @@ const state = {
   txnSort: { col: 'date', dir: 'desc' },
   txnSearch: '',
   selectedCategory: null,
+  selectedIncomeCategory: null,
 };
 
 const INTERNAL_CATEGORIES = new Set(['โอนเงินเข้า','โอนเงินออก']);
@@ -696,6 +722,19 @@ function groupIncomeByMonthAndCategory(rows, topCats) {
     const cat = r.category || '(ไม่ระบุ)';
     const bucket = topSet.has(cat) ? cat : 'อื่นๆ';
     o[bucket] = (o[bucket] || 0) + r.amount;
+  }
+  return new Map([...map.entries()].sort());
+}
+
+function groupIncomeCategoryByMonth(rows, category) {
+  const map = new Map();
+  for (const r of rows) {
+    if (r.isSavings) continue;
+    if (r.amount <= 0) continue;
+    if ((r.category || '(ไม่ระบุ)') !== category) continue;
+    const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
+    if (!map.has(key)) map.set(key, 0);
+    map.set(key, map.get(key) + r.amount);
   }
   return new Map([...map.entries()].sort());
 }
@@ -1145,7 +1184,8 @@ function renderIncomeSources() {
     const avg = o.count > 0 ? o.sum / o.count : 0;
     const topAccountForCat = [...o.accounts.entries()].sort((a, b) => b[1] - a[1])[0];
     const accLabel = topAccountForCat ? topAccountForCat[0] : '-';
-    html += '<tr class="border-b border-slate-100">';
+    const isSelIncome = cat === state.selectedIncomeCategory;
+    html += `<tr class="border-b border-slate-100 cursor-pointer transition${isSelIncome ? ' bg-indigo-50' : ''}" data-cat="${escapeHtml(cat)}">`;
     html += '<td class="py-1.5 pr-3 text-slate-500">' + rank + '</td>';
     html += '<td class="py-1.5 pr-3 font-medium">' + escapeHtml(cat) + '</td>';
     html += '<td class="py-1.5 px-2 text-right tabular-nums text-income font-semibold">' + fmtTHB.format(o.sum) + '</td>';
@@ -1167,6 +1207,14 @@ function renderIncomeSources() {
   html += '<td class="py-2 pl-2"></td>';
   html += '</tr></tfoot>';
   document.getElementById('incomeSourceTable').innerHTML = html;
+  document.querySelectorAll('#incomeSourceTable tr[data-cat]').forEach(row => {
+    row.addEventListener('click', () => {
+      renderIncomeCategoryDetail(row.dataset.cat);
+      document.querySelectorAll('#incomeSourceTable tr[data-cat]').forEach(r =>
+        r.classList.toggle('bg-indigo-50', r === row)
+      );
+    });
+  });
 
   // Summary line
   const concNote = concentration >= 70
@@ -1176,6 +1224,38 @@ function renderIncomeSources() {
       : `✅ รายรับกระจายดี — แหล่งใหญ่สุด <b>${escapeHtml(topCat[0])}</b> เพียง ${concentration.toFixed(1)}%`;
   document.getElementById('incomeSummary').innerHTML =
     `${concNote} · มี <b>${cats.size}</b> หมวดรายรับ · จาก <b>${accounts.size}</b> บัญชี`;
+}
+
+function renderIncomeCategoryDetail(category) {
+  state.selectedIncomeCategory = category;
+  const sec = document.getElementById('incomeCatDetailSection');
+  document.getElementById('incomeCatDetailTitle').textContent = category;
+  sec.classList.remove('hidden');
+  sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  const byMonth = groupIncomeCategoryByMonth(state.filtered, category);
+  const keys = [...byMonth.keys()];
+  const values = [...byMonth.values()];
+
+  renderChart('incomeCatDetail', document.getElementById('incomeCatDetailLine'), {
+    type: 'line',
+    data: {
+      labels: keys,
+      datasets: [{
+        label: 'รายรับ',
+        data: values,
+        borderColor: '#10B981',
+        backgroundColor: 'rgba(16,185,129,.1)',
+        fill: true, tension: .35, pointRadius: 4
+      }]
+    },
+    options: chartOpts({ ySymbol: true })
+  });
+
+  const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  const max = values.length ? Math.max(...values) : 0;
+  document.getElementById('incomeCatDetailSummary').innerHTML =
+    `ค่าเฉลี่ยต่อเดือน: <b>${fmtTHB.format(avg)}</b>  ·  สูงสุด: <b>${fmtTHB.format(max)}</b>  ·  ${values.length} เดือนที่มีรายรับ`;
 }
 
 /* =========================================================
@@ -1660,6 +1740,12 @@ function setupFilterUI() {
   document.querySelectorAll('.preset-btn').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
   document.getElementById('includeInternal').addEventListener('change', e => { state.filters.includeInternal = e.target.checked; refresh(); });
   document.getElementById('includeCreditPay').addEventListener('change', e => { state.filters.includeCreditPay = e.target.checked; refresh(); });
+  document.getElementById('incomeCatDetailClose').addEventListener('click', () => {
+    state.selectedIncomeCategory = null;
+    document.getElementById('incomeCatDetailSection').classList.add('hidden');
+    document.querySelectorAll('#incomeSourceTable tr[data-cat]').forEach(r => r.classList.remove('bg-indigo-50'));
+  });
+
   document.getElementById('catDetailClose').addEventListener('click', () => {
     state.selectedCategory = null;
     document.getElementById('catDetailSection').classList.add('hidden');
@@ -1734,6 +1820,7 @@ function refresh() {
   renderAccountBar();
   renderWeekBar();
   renderIncomeSources();
+  if (state.selectedIncomeCategory) renderIncomeCategoryDetail(state.selectedIncomeCategory);
   renderForecast();
   renderSavings();
   renderMoM();
@@ -1795,6 +1882,31 @@ document.getElementById('shareBtn').addEventListener('click', copyShareLink);
     state.rows = rows;
     onDataLoaded();
   }
+})();
+</script>
+
+<div id="chartTip"></div>
+<script>
+(function() {
+  const tip = document.getElementById('chartTip');
+  document.addEventListener('mouseover', e => {
+    const btn = e.target.closest('.info-btn');
+    if (!btn) return;
+    tip.textContent = btn.dataset.tip;
+    tip.classList.add('show');
+  });
+  document.addEventListener('mouseout', e => {
+    if (e.target.closest('.info-btn')) tip.classList.remove('show');
+  });
+  document.addEventListener('mousemove', e => {
+    if (!tip.classList.contains('show')) return;
+    const x = e.clientX + 14;
+    const y = e.clientY - 10;
+    const tw = tip.offsetWidth;
+    const th = tip.offsetHeight;
+    tip.style.left = (x + tw > window.innerWidth  ? e.clientX - tw - 14 : x) + 'px';
+    tip.style.top  = (y + th > window.innerHeight ? e.clientY - th - 10 : y) + 'px';
+  });
 })();
 </script>
 </body>
