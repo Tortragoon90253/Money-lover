@@ -574,18 +574,24 @@ const CREDITPAY_CATEGORIES = new Set(['จ่ายบัตรเครดิ�
 // หมวดที่ถือเป็น "เก็บออม / ลงทุน" — ไม่ถูกนับเป็นรายจ่าย แต่ติดตามแยกในกราฟ "ลงทุนสะสม"
 const SAVINGS_CATEGORIES = new Set(['การลงทุน']);
 
-// ชื่อบัญชีทั้งหมดในข้อมูล — ใช้แยก "โอนภายใน" (note = ชื่อบัญชี) vs "โอนจริง" (note ว่าง)
-let accountNamesSet  = new Set(); // exact lowercase
-let accountNamesNorm = new Set(); // lowercase + ลบช่องว่างทั้งหมด (fallback)
+// ชื่อบัญชีทั้งหมดในข้อมูล — ใช้แยก "โอนภายใน" vs "โอนจริง" (note ว่าง)
+let accountNamesSet  = new Set(); // lowercase exact
+let accountNamesNorm = new Set(); // lowercase + ลบช่องว่าง (fallback)
 
 function isInternalTransfer(r) {
   if (!INTERNAL_CATEGORIES.has(r.category)) return false;
   const note = (r.note || '').trim().toLowerCase();
   if (!note) return false;
-  if (accountNamesSet.has(note)) return true;
-  // Fallback: เปรียบเทียบหลังลบช่องว่าง เพื่อรองรับ "กสิกร(ต่อ)" vs "กสิกร (ต่อ)"
+  // ตรวจหาชื่อบัญชีที่อยู่ภายใน note (substring) รองรับ "โอนไป กสิกร (ต่อ)" และ "กสิกร (ต่อ) - 50000"
+  for (const acc of accountNamesSet) {
+    if (note.includes(acc)) return true;
+  }
+  // Fallback: ลบช่องว่างก่อนเปรียบเทียบ รองรับ "กสิกร(ต่อ)" vs "กสิกร (ต่อ)"
   const noteNorm = note.replace(/\s+/g, '');
-  return noteNorm.length > 0 && accountNamesNorm.has(noteNorm);
+  for (const acc of accountNamesNorm) {
+    if (noteNorm.includes(acc)) return true;
+  }
+  return false;
 }
 
 const fmtTHB  = new Intl.NumberFormat('th-TH', { style:'currency', currency:'THB', maximumFractionDigits:0 });
