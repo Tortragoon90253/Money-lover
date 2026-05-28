@@ -693,6 +693,8 @@ function groupByCategory(rows, expenseOnly = true) {
   const map = new Map();
   for (const r of rows) {
     if (r.isSavings) continue;
+    if (isInternalTransfer(r)) continue;
+    if (CREDITPAY_CATEGORIES.has(r.category)) continue;
     if (expenseOnly && r.amount >= 0) continue;
     const k = r.category || '(ไม่ระบุ)';
     if (!map.has(k)) map.set(k, { sum: 0, count: 0 });
@@ -720,6 +722,7 @@ function groupByAccount(rows) {
   const map = new Map();
   for (const r of rows) {
     if (r.isSavings) continue;
+    if (isInternalTransfer(r)) continue;
     if (r.amount >= 0) continue;
     const k = r.account || '(ไม่ระบุ)';
     if (!map.has(k)) map.set(k, 0);
@@ -834,6 +837,8 @@ function groupByDayOfWeek(rows) {
   const cnt = [0, 0, 0, 0, 0, 0, 0];
   for (const r of rows) {
     if (r.isSavings) continue;
+    if (isInternalTransfer(r)) continue;
+    if (CREDITPAY_CATEGORIES.has(r.category)) continue;
     if (r.amount >= 0) continue;
     const d = r.date.getDay();
     arr[d] += Math.abs(r.amount);
@@ -846,6 +851,8 @@ function groupByWeek(rows) {
   const map = new Map();
   for (const r of rows) {
     if (r.isSavings) continue;
+    if (isInternalTransfer(r)) continue;
+    if (CREDITPAY_CATEGORIES.has(r.category)) continue;
     if (r.amount >= 0) continue;
     const d = new Date(r.date);
     const day = d.getDay();
@@ -1643,15 +1650,18 @@ function renderForecast() {
 
   // Burn rate
   const recent30 = state.filtered.filter(r => {
-    const ms = (Date.now() - r.date.getTime());
-    return ms >= 0 && ms <= 30 * 86400000 && r.amount < 0 && !r.isSavings;
+    if (r.isSavings) return false;
+    if (isInternalTransfer(r)) return false;
+    if (CREDITPAY_CATEGORIES.has(r.category)) return false;
+    if (r.amount >= 0) return false;
+    const ms = Date.now() - r.date.getTime();
+    return ms >= 0 && ms <= 30 * 86400000;
   });
   const recentSum = recent30.reduce((s, r) => s + Math.abs(r.amount), 0);
   const avgDay = recent30.length > 0 ? recentSum / 30 : 0;
   const avgMonth = avgDay * 30;
 
-  const cashAccounts = ['บัวหลวง (ต่อ)','กสิกร (ต่อ)','กสิกร(ซัน)','ไทยพาณิชย์ (ซัน)','กสิกร เงินเก็บ','True (ต่อ)','true (ซัน)'];
-  const cashBalance = state.rows.reduce((s, r) => cashAccounts.includes(r.account) ? s + r.amount : s, 0);
+  const cashBalance = state.rows.reduce((s, r) => s + r.amount, 0);
   const daysLeft = avgDay > 0 ? Math.floor(cashBalance / avgDay) : Infinity;
 
   document.getElementById('burnRate').innerHTML = `
