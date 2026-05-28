@@ -574,6 +574,16 @@ const CREDITPAY_CATEGORIES = new Set(['จ่ายบัตรเครดิ�
 // หมวดที่ถือเป็น "เก็บออม / ลงทุน" — ไม่ถูกนับเป็นรายจ่าย แต่ติดตามแยกในกราฟ "ลงทุนสะสม"
 const SAVINGS_CATEGORIES = new Set(['การลงทุน']);
 
+// ชื่อบัญชีทั้งหมดในข้อมูล — ใช้แยก "โอนภายใน" (note = ชื่อบัญชี) vs "โอนจริง" (note ว่าง)
+let accountNamesSet = new Set();
+
+function isInternalTransfer(r) {
+  if (!INTERNAL_CATEGORIES.has(r.category)) return false;
+  const note = (r.note || '').trim().toLowerCase();
+  if (!note) return false;
+  return accountNamesSet.has(note);
+}
+
 const fmtTHB  = new Intl.NumberFormat('th-TH', { style:'currency', currency:'THB', maximumFractionDigits:0 });
 const fmtTHB2 = new Intl.NumberFormat('th-TH', { style:'currency', currency:'THB', maximumFractionDigits:2 });
 const fmtNum  = new Intl.NumberFormat('th-TH');
@@ -627,7 +637,7 @@ function applyFilters() {
     if (dateTo && r.date > dateTo) return false;
     if (accounts.size  && !accounts.has(r.account))   return false;
     if (categories.size && !categories.has(r.category)) return false;
-    if (!includeInternal  && INTERNAL_CATEGORIES.has(r.category))   return false;
+    if (!includeInternal  && isInternalTransfer(r))   return false;
     if (!includeCreditPay && CREDITPAY_CATEGORIES.has(r.category))  return false;
     if (!includeInternal  && r.excludeReport && !CREDITPAY_CATEGORIES.has(r.category) && !r.isSavings) return false;
     return true;
@@ -719,7 +729,7 @@ function groupByIncomeCategory(rows) {
   for (const r of rows) {
     if (r.isSavings) continue;
     if (CREDITPAY_CATEGORIES.has(r.category)) continue;
-    if (INTERNAL_CATEGORIES.has(r.category)) continue;
+    if (isInternalTransfer(r)) continue;
     if (r.amount <= 0) continue;
     const k = r.category || '(ไม่ระบุ)';
     if (!map.has(k)) {
@@ -741,7 +751,7 @@ function groupByIncomeAccount(rows) {
   for (const r of rows) {
     if (r.isSavings) continue;
     if (CREDITPAY_CATEGORIES.has(r.category)) continue;
-    if (INTERNAL_CATEGORIES.has(r.category)) continue;
+    if (isInternalTransfer(r)) continue;
     if (r.amount <= 0) continue;
     const k = r.account || '(ไม่ระบุ)';
     map.set(k, (map.get(k) || 0) + r.amount);
@@ -755,7 +765,7 @@ function groupIncomeByMonthAndCategory(rows, topCats) {
   for (const r of rows) {
     if (r.isSavings) continue;
     if (CREDITPAY_CATEGORIES.has(r.category)) continue;
-    if (INTERNAL_CATEGORIES.has(r.category)) continue;
+    if (isInternalTransfer(r)) continue;
     if (r.amount <= 0) continue;
     const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
     if (!map.has(key)) map.set(key, {});
@@ -771,7 +781,7 @@ function groupByExpenseCategoryRich(rows) {
   const map = new Map();
   for (const r of rows) {
     if (r.isSavings) continue;
-    if (INTERNAL_CATEGORIES.has(r.category)) continue;
+    if (isInternalTransfer(r)) continue;
     if (r.amount >= 0) continue;
     const k = r.category || '(ไม่ระบุ)';
     if (!map.has(k)) map.set(k, { sum: 0, count: 0, accounts: new Map(), months: new Set() });
@@ -790,7 +800,7 @@ function groupExpenseByMonthAndCategory(rows, topCats) {
   const topSet = new Set(topCats);
   for (const r of rows) {
     if (r.isSavings) continue;
-    if (INTERNAL_CATEGORIES.has(r.category)) continue;
+    if (isInternalTransfer(r)) continue;
     if (r.amount >= 0) continue;
     const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
     if (!map.has(key)) map.set(key, {});
@@ -960,7 +970,7 @@ function priorPeriodKPIs() {
     if (r.date < prevFrom || r.date > prevTo) return false;
     if (state.filters.accounts.size && !state.filters.accounts.has(r.account)) return false;
     if (state.filters.categories.size && !state.filters.categories.has(r.category)) return false;
-    if (!state.filters.includeInternal && INTERNAL_CATEGORIES.has(r.category)) return false;
+    if (!state.filters.includeInternal && isInternalTransfer(r)) return false;
     if (!state.filters.includeCreditPay && CREDITPAY_CATEGORIES.has(r.category)) return false;
     if (!state.filters.includeInternal && r.excludeReport && !CREDITPAY_CATEGORIES.has(r.category) && !r.isSavings) return false;
     return true;
@@ -1186,7 +1196,7 @@ function renderIncomeSources() {
   const cats = groupByIncomeCategory(state.filtered);
   const accounts = groupByIncomeAccount(state.filtered);
   const total = [...cats.values()].reduce((s, o) => s + o.sum, 0);
-  const incomeRows = state.filtered.filter(r => !r.isSavings && !CREDITPAY_CATEGORIES.has(r.category) && !INTERNAL_CATEGORIES.has(r.category) && r.amount > 0);
+  const incomeRows = state.filtered.filter(r => !r.isSavings && !CREDITPAY_CATEGORIES.has(r.category) && !isInternalTransfer(r) && r.amount > 0);
   const totalCount = incomeRows.reduce((s, r) => s + 1, 0);
 
   // KPI cards
@@ -1382,9 +1392,9 @@ function renderIncomeCategoryDetail(category) {
  * ========================================================= */
 function renderExpenseSources() {
   const cats = groupByExpenseCategoryRich(state.filtered);
-  const accounts = groupByAccount(state.filtered.filter(r => !INTERNAL_CATEGORIES.has(r.category)));
+  const accounts = groupByAccount(state.filtered.filter(r => !isInternalTransfer(r)));
   const total = [...cats.values()].reduce((s, o) => s + o.sum, 0);
-  const expenseRows = state.filtered.filter(r => !r.isSavings && !INTERNAL_CATEGORIES.has(r.category) && r.amount < 0);
+  const expenseRows = state.filtered.filter(r => !r.isSavings && !isInternalTransfer(r) && r.amount < 0);
   const totalCount = expenseRows.length;
 
   const monthMap = groupByMonth(state.filtered);
@@ -2160,6 +2170,7 @@ function onDataLoaded() {
   document.getElementById('dataSummary').innerHTML =
     `📑 โหลด <b>${fmtNum.format(state.rows.length)}</b> รายการ ตั้งแต่ <b>${fmtDate(min)}</b> ถึง <b>${fmtDate(max)}</b>`;
 
+  accountNamesSet = new Set(state.rows.map(r => (r.account || '').trim().toLowerCase()).filter(Boolean));
   setDefaults();
   setupFilterUI();
   refresh();
