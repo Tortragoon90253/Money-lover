@@ -12,6 +12,7 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <!-- Firebase (compat build so we can keep the existing non-module script) -->
@@ -952,17 +953,28 @@ function renderTopCatBar() {
   const bgColors = labels.map(l => l === state.selectedCategory ? '#BE123C' : '#F43F5E');
   renderChart('topCatBar', document.getElementById('topCatBar'), {
     type: 'bar',
+    plugins: [ChartDataLabels],
     data: { labels, datasets: [{ data, backgroundColor: bgColors, borderRadius:4 }] },
     options: {
       indexAxis: 'y',
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 55 } },
       onClick: (evt, elements) => {
         if (!elements.length) return;
         const cat = labels[elements[0].index];
         renderCategoryDetail(cat);
         renderTopCatBar();
       },
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.x) } } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.x) } },
+        datalabels: {
+          anchor: 'end', align: 'end', clip: false,
+          formatter: (v) => abbrev(v),
+          font: { size: 10, family: 'Sarabun' },
+          color: '#374151',
+        }
+      },
       scales: {
         x: { ticks: { callback: (v) => abbrev(v) } },
         y: { ticks: { font: { family: 'Sarabun', size: 11 } } }
@@ -1041,10 +1053,21 @@ function renderAccountBar() {
   const entries = [...m.entries()];
   renderChart('accountBar', document.getElementById('accountBar'), {
     type: 'bar',
+    plugins: [ChartDataLabels],
     data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor:'#4F46E5', borderRadius:4 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.y) } } },
+      layout: { padding: { top: 20 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.y) } },
+        datalabels: {
+          anchor: 'end', align: 'top', clip: false,
+          formatter: (v) => abbrev(v),
+          font: { size: 10, family: 'Sarabun' },
+          color: '#374151',
+        }
+      },
       scales: { y: { ticks: { callback: (v) => abbrev(v) } }, x: { ticks: { font: { size: 10 } } } }
     }
   });
@@ -1058,12 +1081,20 @@ function renderWeekBar() {
   const counts = entries.map(e => e[1].count);
   renderChart('dowBar', document.getElementById('dowBar'), {
     type: 'bar',
+    plugins: [ChartDataLabels],
     data: { labels, datasets: [{ data, backgroundColor:'#7C3AED', borderRadius:4 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 20 } },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.y) + ' · ' + counts[c.dataIndex] + ' รายการ' } }
+        tooltip: { callbacks: { label: (c) => fmtTHB.format(c.parsed.y) + ' · ' + counts[c.dataIndex] + ' รายการ' } },
+        datalabels: {
+          anchor: 'end', align: 'top', clip: false,
+          formatter: (v) => abbrev(v),
+          font: { size: 10, family: 'Sarabun' },
+          color: '#374151',
+        }
       },
       scales: {
         y: { ticks: { callback: (v) => abbrev(v) } },
@@ -1151,13 +1182,26 @@ function renderIncomeSources() {
 
   renderChart('incomeMonthlyStacked', document.getElementById('incomeMonthlyStacked'), {
     type: 'bar',
+    plugins: [ChartDataLabels],
     data: { labels: monthKeys.map(monthLabel), datasets: stackDatasets },
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 24 } },
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { position: 'bottom', labels: { font: { family: 'Sarabun', size: 10 }, boxWidth: 12 } },
         tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtTHB.format(c.parsed.y) } },
+        datalabels: {
+          display: (ctx) => ctx.datasetIndex === ctx.chart.data.datasets.length - 1,
+          anchor: 'end', align: 'top', clip: false,
+          formatter: (value, ctx) => {
+            const idx = ctx.dataIndex;
+            const total = ctx.chart.data.datasets.reduce((s, ds) => s + (ds.data[idx] || 0), 0);
+            return total > 0 ? abbrev(total) : null;
+          },
+          font: { size: 10, family: 'Sarabun' },
+          color: '#374151',
+        },
       },
       scales: {
         x: { stacked: true },
