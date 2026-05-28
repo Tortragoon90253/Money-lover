@@ -575,13 +575,17 @@ const CREDITPAY_CATEGORIES = new Set(['จ่ายบัตรเครดิ�
 const SAVINGS_CATEGORIES = new Set(['การลงทุน']);
 
 // ชื่อบัญชีทั้งหมดในข้อมูล — ใช้แยก "โอนภายใน" (note = ชื่อบัญชี) vs "โอนจริง" (note ว่าง)
-let accountNamesSet = new Set();
+let accountNamesSet  = new Set(); // exact lowercase
+let accountNamesNorm = new Set(); // lowercase + ลบช่องว่างทั้งหมด (fallback)
 
 function isInternalTransfer(r) {
   if (!INTERNAL_CATEGORIES.has(r.category)) return false;
   const note = (r.note || '').trim().toLowerCase();
   if (!note) return false;
-  return accountNamesSet.has(note);
+  if (accountNamesSet.has(note)) return true;
+  // Fallback: เปรียบเทียบหลังลบช่องว่าง เพื่อรองรับ "กสิกร(ต่อ)" vs "กสิกร (ต่อ)"
+  const noteNorm = note.replace(/\s+/g, '');
+  return noteNorm.length > 0 && accountNamesNorm.has(noteNorm);
 }
 
 const fmtTHB  = new Intl.NumberFormat('th-TH', { style:'currency', currency:'THB', maximumFractionDigits:0 });
@@ -2170,7 +2174,9 @@ function onDataLoaded() {
   document.getElementById('dataSummary').innerHTML =
     `📑 โหลด <b>${fmtNum.format(state.rows.length)}</b> รายการ ตั้งแต่ <b>${fmtDate(min)}</b> ถึง <b>${fmtDate(max)}</b>`;
 
-  accountNamesSet = new Set(state.rows.map(r => (r.account || '').trim().toLowerCase()).filter(Boolean));
+  const _accNames = state.rows.map(r => (r.account || '').trim().toLowerCase()).filter(Boolean);
+  accountNamesSet  = new Set(_accNames);
+  accountNamesNorm = new Set(_accNames.map(n => n.replace(/\s+/g, '')));
   setDefaults();
   setupFilterUI();
   refresh();
