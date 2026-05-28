@@ -222,7 +222,7 @@
   <section class="card p-5 mb-6">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
       <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">💚 วิเคราะห์แหล่งที่มาของรายรับ</h2><i class="info-btn" data-tip="วิเคราะห์รายรับทั้งหมดแยกตามหมวด บัญชี และเดือน ดูว่ารายได้มาจากแหล่งใดและมีความหลากหลายเพียงพอหรือไม่ คลิ๊กที่แถวในตารางเพื่อดูกราฟรายเดือน">i</i></div>
-      <div class="text-xs text-slate-500">นับเฉพาะรายการที่เป็นรายรับ (amount &gt; 0) — ไม่รวมหมวดออม/ลงทุน และรับค่าชำระบัตรเครดิต</div>
+      <div class="text-xs text-slate-500">นับเฉพาะรายการที่เป็นรายรับ (amount &gt; 0) — ไม่รวมหมวดออม/ลงทุน รับค่าชำระบัตรเครดิต และการโอนเงินภายใน</div>
     </div>
     <div id="incomeKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
     <div class="grid lg:grid-cols-2 gap-6 mb-4">
@@ -255,7 +255,7 @@
   <section class="card p-5 mb-6">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
       <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">❤️ วิเคราะห์แหล่งที่มาของรายจ่าย</h2><i class="info-btn" data-tip="วิเคราะห์รายจ่ายทั้งหมดแยกตามหมวด บัญชี และเดือน ดูว่าเงินออกจากแหล่งใดมากที่สุด คลิ๊กที่แถวในตารางเพื่อดูกราฟรายเดือน">i</i></div>
-      <div class="text-xs text-slate-500">นับเฉพาะรายการที่เป็นรายจ่าย (amount &lt; 0) — ไม่รวมหมวดออม/ลงทุน</div>
+      <div class="text-xs text-slate-500">นับเฉพาะรายการที่เป็นรายจ่าย (amount &lt; 0) — ไม่รวมหมวดออม/ลงทุน และการโอนเงินภายใน</div>
     </div>
     <div id="expenseSourceKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
     <div class="grid lg:grid-cols-2 gap-6 mb-4">
@@ -719,6 +719,7 @@ function groupByIncomeCategory(rows) {
   for (const r of rows) {
     if (r.isSavings) continue;
     if (CREDITPAY_CATEGORIES.has(r.category)) continue;
+    if (INTERNAL_CATEGORIES.has(r.category)) continue;
     if (r.amount <= 0) continue;
     const k = r.category || '(ไม่ระบุ)';
     if (!map.has(k)) {
@@ -740,6 +741,7 @@ function groupByIncomeAccount(rows) {
   for (const r of rows) {
     if (r.isSavings) continue;
     if (CREDITPAY_CATEGORIES.has(r.category)) continue;
+    if (INTERNAL_CATEGORIES.has(r.category)) continue;
     if (r.amount <= 0) continue;
     const k = r.account || '(ไม่ระบุ)';
     map.set(k, (map.get(k) || 0) + r.amount);
@@ -753,6 +755,7 @@ function groupIncomeByMonthAndCategory(rows, topCats) {
   for (const r of rows) {
     if (r.isSavings) continue;
     if (CREDITPAY_CATEGORIES.has(r.category)) continue;
+    if (INTERNAL_CATEGORIES.has(r.category)) continue;
     if (r.amount <= 0) continue;
     const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
     if (!map.has(key)) map.set(key, {});
@@ -768,6 +771,7 @@ function groupByExpenseCategoryRich(rows) {
   const map = new Map();
   for (const r of rows) {
     if (r.isSavings) continue;
+    if (INTERNAL_CATEGORIES.has(r.category)) continue;
     if (r.amount >= 0) continue;
     const k = r.category || '(ไม่ระบุ)';
     if (!map.has(k)) map.set(k, { sum: 0, count: 0, accounts: new Map(), months: new Set() });
@@ -786,6 +790,7 @@ function groupExpenseByMonthAndCategory(rows, topCats) {
   const topSet = new Set(topCats);
   for (const r of rows) {
     if (r.isSavings) continue;
+    if (INTERNAL_CATEGORIES.has(r.category)) continue;
     if (r.amount >= 0) continue;
     const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
     if (!map.has(key)) map.set(key, {});
@@ -1181,7 +1186,7 @@ function renderIncomeSources() {
   const cats = groupByIncomeCategory(state.filtered);
   const accounts = groupByIncomeAccount(state.filtered);
   const total = [...cats.values()].reduce((s, o) => s + o.sum, 0);
-  const incomeRows = state.filtered.filter(r => !r.isSavings && !CREDITPAY_CATEGORIES.has(r.category) && r.amount > 0);
+  const incomeRows = state.filtered.filter(r => !r.isSavings && !CREDITPAY_CATEGORIES.has(r.category) && !INTERNAL_CATEGORIES.has(r.category) && r.amount > 0);
   const totalCount = incomeRows.reduce((s, r) => s + 1, 0);
 
   // KPI cards
@@ -1377,9 +1382,9 @@ function renderIncomeCategoryDetail(category) {
  * ========================================================= */
 function renderExpenseSources() {
   const cats = groupByExpenseCategoryRich(state.filtered);
-  const accounts = groupByAccount(state.filtered);
+  const accounts = groupByAccount(state.filtered.filter(r => !INTERNAL_CATEGORIES.has(r.category)));
   const total = [...cats.values()].reduce((s, o) => s + o.sum, 0);
-  const expenseRows = state.filtered.filter(r => !r.isSavings && r.amount < 0);
+  const expenseRows = state.filtered.filter(r => !r.isSavings && !INTERNAL_CATEGORIES.has(r.category) && r.amount < 0);
   const totalCount = expenseRows.length;
 
   const monthMap = groupByMonth(state.filtered);
