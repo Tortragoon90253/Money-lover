@@ -159,15 +159,6 @@
         </div>
       </details>
 
-      <label class="flex items-center gap-2 text-sm text-slate-700 ml-auto">
-        <input type="checkbox" id="includeInternal" class="rounded" />
-        <span>รวมรายการโอนภายใน</span>
-      </label>
-      <label class="flex items-center gap-2 text-sm text-slate-700">
-        <input type="checkbox" id="includeCreditPay" class="rounded" />
-        <span>รวมจ่ายบัตรเครดิต</span>
-      </label>
-      <button id="resetBtn" class="text-xs text-indigo-600 hover:text-indigo-800 underline">รีเซ็ต</button>
     </div>
   </section>
 
@@ -715,6 +706,7 @@ function groupByAccount(rows) {
   for (const r of rows) {
     if (r.isSavings) continue;
     if (isInternalTransfer(r)) continue;
+    if (CREDITPAY_CATEGORIES.has(r.category)) continue;
     if (r.amount >= 0) continue;
     const k = r.account || '(ไม่ระบุ)';
     if (!map.has(k)) map.set(k, 0);
@@ -781,6 +773,7 @@ function groupByExpenseCategoryRich(rows) {
   for (const r of rows) {
     if (r.isSavings) continue;
     if (isInternalTransfer(r)) continue;
+    if (CREDITPAY_CATEGORIES.has(r.category)) continue;
     if (r.amount >= 0) continue;
     const k = r.category || '(ไม่ระบุ)';
     if (!map.has(k)) map.set(k, { sum: 0, count: 0, accounts: new Map(), months: new Set() });
@@ -800,6 +793,7 @@ function groupExpenseByMonthAndCategory(rows, topCats) {
   for (const r of rows) {
     if (r.isSavings) continue;
     if (isInternalTransfer(r)) continue;
+    if (CREDITPAY_CATEGORIES.has(r.category)) continue;
     if (r.amount >= 0) continue;
     const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
     if (!map.has(key)) map.set(key, {});
@@ -1397,7 +1391,7 @@ function renderExpenseSources() {
   const cats = groupByExpenseCategoryRich(state.filtered);
   const accounts = groupByAccount(state.filtered.filter(r => !isInternalTransfer(r)));
   const total = [...cats.values()].reduce((s, o) => s + o.sum, 0);
-  const expenseRows = state.filtered.filter(r => !r.isSavings && !isInternalTransfer(r) && r.amount < 0);
+  const expenseRows = state.filtered.filter(r => !r.isSavings && !isInternalTransfer(r) && !CREDITPAY_CATEGORIES.has(r.category) && r.amount < 0);
   const totalCount = expenseRows.length;
 
   const monthMap = groupByMonth(state.filtered);
@@ -1757,6 +1751,8 @@ function renderMoM() {
   const catMap = new Map();
   for (const r of state.filtered) {
     if (r.isSavings) continue;
+    if (isInternalTransfer(r)) continue;
+    if (CREDITPAY_CATEGORIES.has(r.category)) continue;
     if (r.amount >= 0) continue;
     const k = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
     if (!keys.includes(k)) continue;
@@ -2066,8 +2062,6 @@ function setupFilterUI() {
     state.filters.dateTo = e.target.value ? new Date(e.target.value + 'T23:59:59') : null; refresh();
   });
   document.querySelectorAll('.preset-btn').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
-  document.getElementById('includeInternal').addEventListener('change', e => { state.filters.includeInternal = e.target.checked; refresh(); });
-  document.getElementById('includeCreditPay').addEventListener('change', e => { state.filters.includeCreditPay = e.target.checked; refresh(); });
   document.getElementById('incomeCatDetailClose').addEventListener('click', () => {
     state.selectedIncomeCategory = null;
     document.getElementById('incomeCatDetailSection').classList.add('hidden');
@@ -2085,15 +2079,6 @@ function setupFilterUI() {
     renderTopCatBar();
   });
 
-  document.getElementById('resetBtn').addEventListener('click', () => {
-    setDefaults();
-    document.getElementById('includeInternal').checked = false;
-    document.getElementById('includeCreditPay').checked = false;
-    document.querySelectorAll('.acct-chk, .cat-chk').forEach(c => c.checked = false);
-    document.getElementById('accountCount').textContent = 'ทั้งหมด';
-    document.getElementById('categoryCount').textContent = 'ทั้งหมด';
-    refresh();
-  });
 }
 
 function applyPreset(p) {
