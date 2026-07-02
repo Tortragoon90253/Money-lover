@@ -643,11 +643,14 @@ function computeKPIs(rows) {
     } else if (r.amount > 0) income  += r.amount;
     else                     expense += -r.amount;
   }
+  const savingsNet = savingsOut - savingsIn;
   const net = income - expense;
+  // สุทธิจริง = รายรับ − รายจ่าย − ออม/ลงทุนสุทธิ
+  const netAfterSavings = net - savingsNet;
   const savings = income > 0 ? (net / income) * 100 : 0;
   const days = daysSpan(rows);
   const avgDay = days > 0 ? expense / days : 0;
-  return { income, expense, net, savings, avgDay, count: rows.length, days, savingsOut, savingsIn, savingsNet: savingsOut - savingsIn };
+  return { income, expense, net, netAfterSavings, savings, avgDay, count: rows.length, days, savingsOut, savingsIn, savingsNet };
 }
 
 function daysSpan(rows) {
@@ -930,7 +933,7 @@ function renderKPIs() {
   const cards = [
     { title:'รายรับรวม',         val: fmtTHB.format(k.income),  delta: deltaPct(k.income, prev.income),   cls:'income',  emoji:'💚' },
     { title:'รายจ่ายรวม',         val: fmtTHB.format(k.expense), delta: deltaPct(k.expense, prev.expense, true), cls:'expense', emoji:'💸' },
-    { title:'คงเหลือสุทธิ',       val: fmtTHB.format(k.net),     delta: deltaPct(k.net, prev.net),         cls: k.net >= 0 ? 'income' : 'expense', emoji: k.net >= 0 ? '📈' : '📉' },
+    { title:'คงเหลือสุทธิ (หักออม/ลงทุน)', val: fmtTHB.format(k.netAfterSavings), delta: deltaPct(k.netAfterSavings, prev.netAfterSavings), cls: k.netAfterSavings >= 0 ? 'income' : 'expense', emoji: k.netAfterSavings >= 0 ? '📈' : '📉' },
     { title:'อัตราการออม',        val: k.savings.toFixed(1)+'%', delta: deltaPct(k.savings, prev.savings), cls:'brand',   emoji:'🏦' },
     { title:'ค่าใช้จ่ายเฉลี่ย/วัน', val: fmtTHB.format(k.avgDay),  delta: deltaPct(k.avgDay, prev.avgDay, true),   cls:'brand',   emoji:'📊' },
     { title:'จำนวนรายการ',         val: fmtNum.format(k.count),   delta: deltaPct(k.count, prev.count),     cls:'brand',   emoji:'#' },
