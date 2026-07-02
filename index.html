@@ -168,8 +168,8 @@
   <!-- Trend Chart -->
   <section class="card p-5 mb-6">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">📈 แนวโน้มรายเดือน</h2><i class="info-btn" data-tip="แสดงรายรับ รายจ่าย และยอดสุทธิแต่ละเดือน เส้นประ = ค่าเฉลี่ยเคลื่อนที่ 3 เดือน เส้นม่วง = ยอดออม/ลงทุนสะสม (แกนขวา) ใช้ดูทิศทางการเงินโดยรวมว่าดีขึ้นหรือแย่ลง">i</i></div>
-      <div class="text-xs text-slate-500">เส้นประ = ค่าเฉลี่ยเคลื่อนที่ 3 เดือน · เส้นม่วง = ออม/ลงทุนสะสม (แกนขวา)</div>
+      <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">📈 แนวโน้มรายเดือน</h2><i class="info-btn" data-tip="แสดงรายรับ รายจ่าย ออม/ลงทุน และยอดสุทธิแต่ละเดือน (สุทธิ = รายรับ − รายจ่าย − ออม/ลงทุน) เส้นประ = ค่าเฉลี่ยเคลื่อนที่ 3 เดือน ใช้ดูทิศทางการเงินโดยรวมว่าดีขึ้นหรือแย่ลง">i</i></div>
+      <div class="text-xs text-slate-500">สุทธิ = รายรับ − รายจ่าย − ออม/ลงทุน · เส้นประ = ค่าเฉลี่ยเคลื่อนที่ 3 เดือน</div>
     </div>
     <div class="relative h-80"><canvas id="trendChart"></canvas></div>
   </section>
@@ -983,35 +983,28 @@ function renderTrendChart() {
   const labels = [...m.keys()];
   const incomes = labels.map(k => m.get(k).income);
   const expenses = labels.map(k => m.get(k).expense);
-  const nets = labels.map(k => m.get(k).net);
-  const ma = movingAverage(nets, 3);
 
   const sav = groupSavingsByMonth(state.filtered);
-  let cum = 0;
-  const savingsCum = labels.map(k => {
-    const o = sav.get(k);
-    if (o) cum += o.out - o.in;
-    return cum;
-  });
+  const savingsMonthly = labels.map(k => { const o = sav.get(k); return o ? o.out - o.in : 0; });
+  // สุทธิจริง = รายรับ − รายจ่าย − ออม/ลงทุนของเดือนนั้น
+  const nets = labels.map((k, i) => m.get(k).net - savingsMonthly[i]);
+  const ma = movingAverage(nets, 3);
 
   const datasets = [
     { label:'รายรับ',   data: incomes,  borderColor:'#10B981', backgroundColor:'rgba(16,185,129,.1)', fill:true, tension:.35, pointRadius:3 },
     { label:'รายจ่าย', data: expenses, borderColor:'#F43F5E', backgroundColor:'rgba(244,63,94,.1)',  fill:true, tension:.35, pointRadius:3 },
-    { label:'สุทธิ',    data: nets,     borderColor:'#4F46E5', backgroundColor:'transparent', tension:.35, pointRadius:3, borderWidth:2 },
+    { label:'สุทธิ (หลังหักออม/ลงทุน)', data: nets, borderColor:'#4F46E5', backgroundColor:'transparent', tension:.35, pointRadius:3, borderWidth:2 },
     { label:'MA-3 สุทธิ', data: ma,    borderColor:'#94A3B8', borderDash:[6,4], backgroundColor:'transparent', tension:.35, pointRadius:0, borderWidth:2 },
   ];
-
-  const options = chartOpts({ ySymbol:true });
   if (sav.size > 0) {
-    datasets.push({ label:'ออม/ลงทุนสะสม', data: savingsCum, borderColor:'#8B5CF6', backgroundColor:'rgba(139,92,246,.08)', fill:true, tension:.35, pointRadius:3, borderWidth:2, yAxisID:'y1' });
-    options.scales.y1 = { position:'right', ticks:{ callback:(v) => abbrev(v) }, grid:{ drawOnChartArea:false }, title:{ display:true, text:'ออม/ลงทุนสะสม', font:{ family:'Sarabun', size:11 } } };
+    datasets.push({ label:'ออม/ลงทุน', data: savingsMonthly, borderColor:'#8B5CF6', backgroundColor:'rgba(139,92,246,.08)', fill:true, tension:.35, pointRadius:3, borderWidth:2 });
   }
 
   const ctx = document.getElementById('trendChart');
   const cfg = {
     type: 'line',
     data: { labels, datasets },
-    options
+    options: chartOpts({ ySymbol:true })
   };
   renderChart('trend', ctx, cfg);
 }
