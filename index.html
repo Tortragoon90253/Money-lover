@@ -289,7 +289,7 @@
   <!-- Forecast & Burn rate -->
   <section class="grid lg:grid-cols-3 gap-6 mb-6">
     <div class="card p-5 lg:col-span-2">
-      <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🔮 พยากรณ์กระแสเงินสด (3 เดือนข้างหน้า)</h2><i class="info-btn" data-tip="ใช้ Linear Regression จากข้อมูลย้อนหลังพยากรณ์กระแสเงินสดสุทธิ 3 เดือนข้างหน้า เส้นประสีเหลือง = พยากรณ์ แถบสี = ช่วงความเชื่อมั่น ±1σ R² ยิ่งใกล้ 1 ยิ่งเชื่อถือได้">i</i></div>
+      <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🔮 พยากรณ์กระแสเงินสด (3 เดือนข้างหน้า)</h2><i class="info-btn" data-tip="ใช้ Linear Regression จากสุทธิรายเดือนหลังหักออม/ลงทุน (ไม่รวมโอนภายใน รายการบัตรเครดิต และเดือนปัจจุบันที่ยังไม่สิ้นสุด) พยากรณ์ 3 เดือนข้างหน้า เส้นประสีเหลือง = พยากรณ์ แถบสี = ช่วงความเชื่อมั่น ±1σ R² ยิ่งใกล้ 1 ยิ่งเชื่อถือได้">i</i></div>
       <div class="relative h-72"><canvas id="forecastChart"></canvas></div>
       <p id="forecastSummary" class="text-sm text-slate-600 mt-3"></p>
     </div>
@@ -664,13 +664,15 @@ function groupByMonth(rows) {
   const map = new Map();
   for (const r of rows) {
     const key = r.date.getFullYear() + '-' + String(r.date.getMonth() + 1).padStart(2, '0');
-    if (!map.has(key)) map.set(key, { income: 0, expense: 0, net: 0, count: 0 });
+    if (!map.has(key)) map.set(key, { income: 0, expense: 0, net: 0, savingsNet: 0, netAfterSavings: 0, count: 0 });
     const o = map.get(key);
     o.count++;
-    if (r.isSavings) continue;
-    if (r.amount > 0) o.income += r.amount;
-    else              o.expense += -r.amount;
+    if (r.isSavings)       o.savingsNet += -r.amount;
+    else if (r.amount > 0) o.income  += r.amount;
+    else                   o.expense += -r.amount;
     o.net = o.income - o.expense;
+    // เงินสดสุทธิจริงของเดือน = สุทธิ − เงินที่ไหลออกไปออม/ลงทุน (นิยามเดียวกับ KPI "คงเหลือสุทธิ")
+    o.netAfterSavings = o.net - o.savingsNet;
   }
   return new Map([...map.entries()].sort());
 }
@@ -1590,15 +1592,35 @@ function renderExpenseCategoryDetail(category) {
  *  RENDER — FORECAST + BURN RATE
  * ========================================================= */
 function renderForecast() {
-  const m = groupByMonth(state.filtered);
-  const keys = [...m.keys()];
+  // กระแสเงินสดจริง: ตัดโอนภายในและรายการบัตรเครดิตออกเสมอ
+  // (แบบเดียวกับ groupByCategory และ burn rate — กันเพี้ยนเมื่อผู้ใช้เปิดสวิตช์แสดงรายการเหล่านี้)
+  const flowRows = state.filtered.filter(r =>
+    !isInternalTransfer(r) && !CREDITPAY_CATEGORIES.has(r.category));
+  const m = groupByMonth(flowRows);
+  let keys = [...m.keys()];
+
+  // เติมเดือนที่ไม่มีรายการด้วยค่า 0 เพื่อให้ระยะห่างบนแกนเวลาเท่ากันจริง
+  if (keys.length > 1) {
+    const filled = [];
+    for (let k = keys[0], lastK = keys[keys.length - 1]; ; k = nextMonthKey(k)) {
+      filled.push(k);
+      if (k === lastK) break;
+    }
+    keys = filled;
+  }
+
+  // ตัดเดือนปัจจุบันที่ยังไม่สิ้นสุดออก — ข้อมูลไม่เต็มเดือนจะดึงแนวโน้มเพี้ยน
+  const now = new Date();
+  const currentKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const droppedCurrentMonth = keys.length > 0 && keys[keys.length - 1] === currentKey;
+  if (droppedCurrentMonth) keys = keys.slice(0, -1);
+
   if (keys.length < 2) {
     renderChart('forecast', document.getElementById('forecastChart'), { type:'line', data:{ labels:[], datasets:[] }, options:{} });
-    document.getElementById('forecastSummary').textContent = 'ข้อมูลไม่พอสำหรับการพยากรณ์ (ต้องมีอย่างน้อย 2 เดือน)';
+    document.getElementById('forecastSummary').textContent = 'ข้อมูลไม่พอสำหรับการพยากรณ์ (ต้องมีอย่างน้อย 2 เดือนที่สิ้นสุดแล้ว)';
     return;
   }
-  const nets = keys.map(k => m.get(k).net);
-  const expenses = keys.map(k => m.get(k).expense);
+  const nets = keys.map(k => m.has(k) ? m.get(k).netAfterSavings : 0);
   const reg = linearRegression(nets);
 
   const futureKeys = [];
@@ -1626,7 +1648,7 @@ function renderForecast() {
     data: {
       labels: allLabels,
       datasets: [
-        { label:'ประวัติ (สุทธิ)', data: histData, borderColor:'#4F46E5', backgroundColor:'rgba(79,70,229,.1)', fill:false, tension:.35, pointRadius:3 },
+        { label:'ประวัติ (สุทธิหลังหักออม/ลงทุน)', data: histData, borderColor:'#4F46E5', backgroundColor:'rgba(79,70,229,.1)', fill:false, tension:.35, pointRadius:3 },
         { label:'พยากรณ์',         data: futureData, borderColor:'#F59E0B', borderDash:[5,5], backgroundColor:'transparent', tension:.35, pointRadius:4 },
         { label:'+1σ', data: futurePlus,  borderColor:'rgba(245,158,11,.4)', backgroundColor:'rgba(245,158,11,.12)', fill:'+1', pointRadius:0, borderWidth:1 },
         { label:'-1σ', data: futureMinus, borderColor:'rgba(245,158,11,.4)', backgroundColor:'transparent',         fill:false, pointRadius:0, borderWidth:1 },
@@ -1641,13 +1663,15 @@ function renderForecast() {
   const trend = reg.slope >= 0 ? 'เป็นบวก 📈' : 'เป็นลบ 📉';
   document.getElementById('forecastSummary').innerHTML =
     `แนวโน้มสุทธิ ${trend} (slope ≈ ${fmtTHB.format(reg.slope)}/เดือน, R² = ${reg.rSquared.toFixed(2)})  ·  ` +
-    `รวม 3 เดือนข้างหน้าคาดว่า ${fmtTHB.format(totalForecast)}`;
+    `รวม 3 เดือนข้างหน้าคาดว่า ${fmtTHB.format(totalForecast)}` +
+    (droppedCurrentMonth ? '  ·  <span class="text-slate-400">ไม่รวมเดือนปัจจุบันที่ยังไม่สิ้นสุด</span>' : '');
 
-  // Burn rate
-  const recent30 = state.filtered.filter(r => {
+  // Burn rate — ใช้ state.rows (ทุกบัญชี) ให้ฐานข้อมูลเดียวกับยอดเงินสดในมือด้านล่าง
+  const recent30 = state.rows.filter(r => {
     if (r.isSavings) return false;
     if (isInternalTransfer(r)) return false;
     if (CREDITPAY_CATEGORIES.has(r.category)) return false;
+    if (r.excludeReport) return false;
     if (r.amount >= 0) return false;
     const ms = Date.now() - r.date.getTime();
     return ms >= 0 && ms <= 30 * 86400000;
@@ -1661,7 +1685,7 @@ function renderForecast() {
 
   document.getElementById('burnRate').innerHTML = `
     <div>
-      <div class="text-xs text-slate-500">รายจ่ายเฉลี่ย/วัน (30 วันล่าสุด)</div>
+      <div class="text-xs text-slate-500">รายจ่ายเฉลี่ย/วัน (30 วันล่าสุด • ทุกบัญชี)</div>
       <div class="text-xl font-bold text-expense">${fmtTHB.format(avgDay)}</div>
     </div>
     <div>
