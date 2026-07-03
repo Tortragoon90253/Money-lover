@@ -132,6 +132,64 @@
     box-shadow:0 8px 24px rgba(0,0,0,.28);
   }
   #chartTip.show { opacity:1; }
+
+  /* ===== AI Chat ===== */
+  /* ID selector ชนะ class — ต้องบังคับให้ .hidden ชนะเสมอ ไม่งั้น modal จะบังคลิกทั้งหน้า */
+  #chatFab.hidden, #chatPanel.hidden, #aiConsentModal.hidden { display:none; }
+  #chatFab {
+    position:fixed; right:1.25rem; bottom:1.25rem; z-index:50;
+    width:56px; height:56px; border-radius:50%;
+    background:var(--accent); color:#fff; font-size:24px;
+    box-shadow:0 6px 20px rgba(0,122,255,.4);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; border:none; transition:transform .15s;
+  }
+  #chatFab:active { transform:scale(.92); }
+  #chatPanel {
+    position:fixed; right:1.25rem; bottom:1.25rem; z-index:50;
+    width:min(400px, calc(100vw - 2rem));
+    height:min(600px, calc(100dvh - 4rem));
+    background:var(--card); border-radius:20px;
+    box-shadow:0 16px 48px rgba(0,0,0,.22), inset 0 0 0 1px var(--sep);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  @media (max-width:640px) {
+    #chatPanel { right:0; left:0; bottom:0; width:100%; height:85dvh; border-radius:20px 20px 0 0; }
+  }
+  .chat-head {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:.8rem 1rem; border-bottom:1px solid var(--sep);
+    background:rgba(242,242,247,.7); backdrop-filter:blur(20px);
+  }
+  .chat-icon-btn {
+    width:30px; height:30px; border-radius:50%; border:none; cursor:pointer;
+    background:var(--fill); color:var(--ink2); font-size:14px;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .chat-icon-btn:hover { background:var(--fill-2); }
+  .chat-msgs { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:.6rem; }
+  .chat-bubble { max-width:85%; padding:.55rem .85rem; border-radius:16px; font-size:.85rem; line-height:1.55; word-break:break-word; }
+  .chat-bubble.user { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:5px; }
+  .chat-bubble.bot  { align-self:flex-start; background:var(--fill); color:var(--ink); border-bottom-left-radius:5px; }
+  .chat-bubble details { margin-top:.45rem; }
+  .chat-bubble summary { font-size:.7rem; color:var(--ink3); cursor:pointer; }
+  .chat-bubble pre {
+    margin-top:.3rem; padding:.5rem; background:rgba(0,0,0,.05); border-radius:8px;
+    font-size:.65rem; max-height:180px; overflow:auto; white-space:pre-wrap;
+  }
+  .chat-badge { font-size:.65rem; color:var(--ink3); margin-top:.25rem; }
+  .chat-inputrow { display:flex; gap:.5rem; padding:.7rem .8rem; border-top:1px solid var(--sep); background:var(--card); }
+  .chat-settings { padding:.9rem 1rem; border-bottom:1px solid var(--sep); background:#FAFAFC; font-size:.8rem; }
+  #aiConsentModal {
+    position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.4);
+    display:flex; align-items:center; justify-content:center; padding:1rem;
+    backdrop-filter:blur(6px);
+  }
+  #aiConsentModal .modal-card {
+    background:var(--card); border-radius:20px; max-width:520px; width:100%;
+    max-height:85dvh; overflow-y:auto; padding:1.4rem;
+    box-shadow:0 24px 64px rgba(0,0,0,.3);
+  }
 </style>
 </head>
 <body class="min-h-screen">
@@ -406,6 +464,71 @@
     Money Lover Analytics · ประมวลผลในเบราว์เซอร์เท่านั้น · ข้อมูลไม่ถูกส่งออกนอกเครื่อง
   </footer>
 </main>
+
+<!-- ========== AI CHAT ========== -->
+<button id="chatFab" class="hidden" title="เลขาผู้ช่วยวิเคราะห์">💬</button>
+
+<div id="chatPanel" class="hidden">
+  <div class="chat-head">
+    <div>
+      <div class="font-semibold text-sm">🤖 เลขาผู้ช่วยวิเคราะห์</div>
+      <div id="chatModeLabel" class="text-[11px]" style="color:var(--ink3)">โหมดในเครื่อง — ข้อมูลไม่ออกจากอุปกรณ์</div>
+    </div>
+    <div class="flex gap-1.5">
+      <button id="chatSettingsBtn" class="chat-icon-btn" title="ตั้งค่า AI">⚙️</button>
+      <button id="chatCloseBtn" class="chat-icon-btn" title="ปิด">✕</button>
+    </div>
+  </div>
+
+  <div id="chatSettings" class="chat-settings hidden">
+    <div class="font-semibold mb-1">เชื่อมต่อ Google Gemini (ฟรี)</div>
+    <p class="mb-2" style="color:var(--ink2)">ขอ API key ฟรีที่ <b>aistudio.google.com/apikey</b> — key ถูกเก็บไว้ใน<b>อุปกรณ์นี้เท่านั้น</b> ไม่ sync ขึ้นคลาวด์ ไม่ติดไปกับลิงก์แชร์</p>
+    <input id="aiKeyInput" type="password" class="field w-full mb-2" placeholder="วาง API key (AIza...)" autocomplete="off" />
+    <label class="flex items-center gap-2 mb-1"><input type="checkbox" id="aiKeySession" /> เก็บ key ชั่วคราว (ปิดแท็บแล้วหาย — เหมาะกับเครื่องสาธารณะ)</label>
+    <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="aiLocalOnlyChk" /> โหมดในเครื่องเท่านั้น (ปิดการส่งข้อมูลออกทั้งหมด)</label>
+    <div class="flex gap-2">
+      <button id="aiKeySave" class="btn-solid" style="padding:.35rem .9rem;font-size:.75rem">บันทึก</button>
+      <button id="aiKeyDelete" class="btn-tint" style="padding:.35rem .9rem;font-size:.75rem;color:#c93534;background:rgba(201,53,52,.1)">ลบ key ออกจากเครื่อง</button>
+    </div>
+  </div>
+
+  <div id="chatMsgs" class="chat-msgs"></div>
+  <div class="chat-inputrow">
+    <input id="chatInput" class="field flex-1" placeholder="ถามเรื่องการเงินของคุณ..." autocomplete="off" />
+    <button id="chatSend" class="btn-solid" style="padding:.45rem .95rem">➤</button>
+  </div>
+</div>
+
+<!-- ========== AI CONSENT MODAL ========== -->
+<div id="aiConsentModal" class="hidden">
+  <div class="modal-card">
+    <h3 class="text-lg font-bold mb-2">🔐 ก่อนเปิดใช้ AI ภายนอก</h3>
+    <p class="text-sm mb-3" style="color:var(--ink2)">เมื่อถามคำถามอิสระ ระบบจะส่ง<b>ข้อมูลสรุปแบบปิดบังตัวตน</b>ไปยัง Google Gemini ผ่าน HTTPS โดยตรง (ไม่มีตัวกลาง)</p>
+    <div class="text-sm mb-3">
+      <div class="font-semibold text-income mb-1">✅ สิ่งที่ส่ง</div>
+      <ul class="list-disc list-inside mb-2" style="color:var(--ink2)">
+        <li>ยอดรวมรายเดือน (ปัดเศษเป็นหลักร้อย)</li>
+        <li>ชื่อหมวดและยอดรวมของหมวดใช้จ่ายสูงสุด</li>
+        <li>ตัวชี้วัด เช่น อัตราการออม, burn rate</li>
+        <li>ชื่อบัญชีถูกแทนด้วย "บัญชี A, B, C"</li>
+      </ul>
+      <div class="font-semibold text-expense mb-1">❌ สิ่งที่ไม่ส่งเด็ดขาด</div>
+      <ul class="list-disc list-inside" style="color:var(--ink2)">
+        <li>รายการธุรกรรมรายตัว, หมายเหตุ (note), วันที่รายวัน</li>
+        <li>ชื่อบัญชี/ธนาคารจริง, ID, อีเมล, ลิงก์แชร์</li>
+      </ul>
+    </div>
+    <details class="mb-3 text-sm">
+      <summary class="cursor-pointer font-semibold" style="color:var(--accent)">👀 ดูตัวอย่างข้อมูลจริงที่จะถูกส่ง</summary>
+      <pre id="consentPreview" class="mt-2 p-3 rounded-xl text-[11px] overflow-auto max-h-52" style="background:var(--fill);white-space:pre-wrap"></pre>
+    </details>
+    <p class="text-xs mb-4 p-3 rounded-xl" style="background:rgba(237,161,0,.12);color:#7a5600">⚠️ ระดับฟรีของ Google อาจนำข้อมูลที่ส่งไปใช้ปรับปรุงโมเดล — นี่คือเหตุผลที่เราส่งเฉพาะยอดสรุปปัดเศษและปิดบังชื่อบัญชี</p>
+    <div class="flex gap-2 justify-end">
+      <button id="consentCancel" class="btn-tint">ยกเลิก</button>
+      <button id="consentAccept" class="btn-solid">ยอมรับและเปิดใช้</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* =========================================================
@@ -2295,6 +2418,7 @@ function onDataLoaded() {
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('reloadBtn').classList.remove('hidden');
+  document.getElementById('chatFab').classList.remove('hidden');
 
   const min = new Date(Math.min(...state.rows.map(r => r.date.getTime())));
   const max = new Date(Math.max(...state.rows.map(r => r.date.getTime())));
@@ -2306,6 +2430,286 @@ function onDataLoaded() {
   setupFilterUI();
   refresh();
 }
+
+/* =========================================================
+ *  AI CHAT — เลขาผู้ช่วยวิเคราะห์ (rule-based ในเครื่อง + Gemini BYOK)
+ *  ความปลอดภัย: ส่งเฉพาะยอดสรุปปัดเศษ+ปิดบังชื่อบัญชี / key อยู่ในเครื่องเท่านั้น
+ * ========================================================= */
+const GEMINI_MODEL = 'gemini-2.5-flash';
+// endpoint เดียวที่อนุญาต — ห้ามมีตัวกลางอื่น
+const GEMINI_URL = (key) => `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+const chatState = { history: [], accountAlias: new Map(), busy: false, pendingKey: null };
+
+function aiGetKey()    { return sessionStorage.getItem('aiKey') || localStorage.getItem('aiKey') || ''; }
+function aiConsented() { return localStorage.getItem('aiConsent') === 'yes'; }
+function aiLocalOnly() { return localStorage.getItem('aiLocalOnly') === 'yes'; }
+function aiEnabled()   { return !!aiGetKey() && aiConsented() && !aiLocalOnly(); }
+
+const r100 = (v) => Math.round(v / 100) * 100; // ปัดเศษหลักร้อย ลดความละเอียดข้อมูลก่อนส่งออก
+
+// สร้างข้อมูลสรุปที่ "ปลอดภัยต่อการส่งออก" — ไม่มีรายการดิบ ไม่มี note ไม่มีชื่อบัญชีจริง
+function buildAISummary() {
+  const flow = cashFlowRows(state.filtered);
+  const m = groupByMonth(flow);
+  const months = [...m.entries()].slice(-12).map(([k, o]) => ({
+    เดือน: k, รายรับ: r100(o.income), รายจ่าย: r100(o.expense), คงเหลือหลังออมลงทุน: r100(o.netAfterSavings),
+  }));
+  const cats = [...groupByCategory(flow).entries()].slice(0, 8)
+    .map(([c, o]) => ({ หมวด: c, ยอดรวม: r100(o.sum) }));
+  const incs = [...groupByIncomeCategory(flow).entries()].slice(0, 5)
+    .map(([c, o]) => ({ หมวด: c, ยอดรวม: r100(o.sum) }));
+  chatState.accountAlias.clear();
+  const accs = [...groupByAccount(flow).entries()].slice(0, 6).map(([name, sum], i) => {
+    const alias = 'บัญชี ' + String.fromCharCode(65 + i);
+    chatState.accountAlias.set(alias, name);
+    return { บัญชี: alias, รายจ่ายรวม: r100(sum) };
+  });
+  const k = computeKPIs(state.filtered);
+  return {
+    หมายเหตุ: 'ยอดทั้งหมดปัดเศษหลักร้อย (THB) ชื่อบัญชีถูกปิดบังเป็นตัวอักษร',
+    ช่วงข้อมูล: months.length ? `${months[0].เดือน} ถึง ${months[months.length - 1].เดือน}` : '-',
+    สรุปรายเดือน: months,
+    หมวดรายจ่ายสูงสุด: cats,
+    แหล่งรายรับหลัก: incs,
+    รายจ่ายต่อบัญชี: accs,
+    ตัวชี้วัด: {
+      รายรับรวม: r100(k.income), รายจ่ายรวม: r100(k.expense),
+      คงเหลือหลังออมลงทุน: r100(k.netAfterSavings),
+      ออมลงทุนสุทธิ: r100(k.savingsNet),
+      อัตราการออมร้อยละ: Math.round(k.savings),
+      รายจ่ายเฉลี่ยต่อวัน: r100(k.avgDay),
+    },
+  };
+}
+
+// แปลง "บัญชี A" ในคำตอบกลับเป็นชื่อจริง — ทำในเครื่องเท่านั้น
+function unmaskAccounts(text) {
+  let out = text;
+  for (const [alias, name] of chatState.accountAlias) out = out.split(alias).join(name);
+  return out;
+}
+
+/* ---------- โหมดในเครื่อง: ตอบคำถามยอดฮิตโดยไม่ส่งอะไรออก ---------- */
+function answerLocally(q) {
+  if (!state.filtered.length) return 'ยังไม่มีข้อมูล — อัปโหลดไฟล์ CSV ก่อนนะครับ';
+  const t = q.toLowerCase().replace(/\s+/g, '');
+  const has = (...ws) => ws.some(w => t.includes(w));
+  const k = computeKPIs(state.filtered);
+
+  if (has('ช่วยอะไร', 'ทำอะไรได้', 'help', 'วิธีใช้', 'ถามอะไรได้')) {
+    return 'ผมตอบได้ทันทีจากข้อมูลในเครื่อง (ไม่ส่งอะไรออก):\n' +
+      '• "ใช้เงินไปเท่าไหร่" · "รายรับเท่าไหร่"\n• "หมวดไหนใช้เยอะสุด"\n• "คงเหลือสุทธิเท่าไหร่"\n' +
+      '• "ออม/ลงทุนไปเท่าไหร่"\n• "เงินพอใช้อีกกี่วัน"\n• "พยากรณ์เดือนหน้า"\n• "วันไหนใช้เงินเยอะสุด"\n' +
+      (aiEnabled() ? '\nถามอิสระนอกเหนือจากนี้ได้เลย ผมจะส่งข้อมูลสรุป (ปิดบังตัวตน) ให้ Gemini ช่วยวิเคราะห์' : '\nอยากถามอิสระมากกว่านี้ กด ⚙️ เพื่อเชื่อม Gemini ฟรี');
+  }
+  if (has('หมวดไหน', 'หมวดอะไร') || (has('หมวด') && has('มากสุด', 'เยอะสุด', 'สูงสุด', 'แพงสุด'))) {
+    const top = [...groupByCategory(cashFlowRows(state.filtered)).entries()].slice(0, 3);
+    if (!top.length) return 'ยังไม่พบรายจ่ายในช่วงที่เลือกครับ';
+    return '3 หมวดที่ใช้มากสุดในช่วงที่เลือก:\n' + top.map(([c, o], i) => `${i + 1}. ${c} — ${fmtTHB.format(o.sum)} (${o.count} รายการ)`).join('\n');
+  }
+  if (has('วันไหน', 'วันที่ใช้')) {
+    const dayMap = groupByDay(state.filtered);
+    let maxK = null, maxV = 0;
+    for (const [kk, v] of dayMap) if (v.sum > maxV) { maxK = kk; maxV = v.sum; }
+    return maxK ? `วันที่ใช้เงินสูงสุดคือ ${fmtDate(new Date(maxK))} รวม ${fmtTHB.format(maxV)} (${dayMap.get(maxK).count} รายการ)` : 'ยังไม่พบรายจ่ายครับ';
+  }
+  if (has('กี่วัน', 'พอใช้', 'อยู่ได้อีก', 'burn')) {
+    const recent30 = state.rows.filter(r => !r.isSavings && !isInternalTransfer(r) && !CREDITPAY_CATEGORIES.has(r.category) && !r.excludeReport && r.amount < 0 && (Date.now() - r.date.getTime()) <= 30 * 86400000 && (Date.now() - r.date.getTime()) >= 0);
+    const avgDay = recent30.length ? recent30.reduce((s, r) => s + Math.abs(r.amount), 0) / 30 : 0;
+    const cash = state.rows.reduce((s, r) => s + r.amount, 0);
+    if (avgDay <= 0) return `ยอดเงินสดในมือประมาณ ${fmtTHB.format(cash)} — 30 วันล่าสุดไม่พบรายจ่าย จึงคำนวณ burn rate ไม่ได้ครับ`;
+    return `จากรายจ่ายเฉลี่ย ${fmtTHB.format(avgDay)}/วัน (30 วันล่าสุด ทุกบัญชี) และเงินสดในมือ ${fmtTHB.format(cash)} — อยู่ได้อีกประมาณ ${fmtNum.format(Math.floor(cash / avgDay))} วันครับ`;
+  }
+  if (has('พยากรณ์', 'เดือนหน้า', 'คาดการณ์')) {
+    const mm = groupByMonth(cashFlowRows(state.filtered));
+    let keys = fillMonthGaps([...mm.keys()]);
+    if (keys.length && keys[keys.length - 1] === currentMonthKey()) keys = keys.slice(0, -1);
+    if (keys.length < 2) return 'ข้อมูลยังไม่พอพยากรณ์ (ต้องมีอย่างน้อย 2 เดือนที่จบแล้ว) ครับ';
+    const nets = keys.map(kk => mm.has(kk) ? mm.get(kk).netAfterSavings : 0);
+    const reg = linearRegression(nets);
+    const next = reg.slope * keys.length + reg.intercept;
+    return `คาดว่าเดือนหน้าจะมีเงินคงเหลือสุทธิ (หลังหักออม/ลงทุน) ประมาณ ${fmtTHB.format(next)} — แนวโน้ม${reg.slope >= 0 ? 'ดีขึ้น 📈' : 'ลดลง 📉'} (R² = ${reg.rSquared.toFixed(2)})`;
+  }
+  // คำถามยอดเงินต้องมีคำเชิงปริมาณกำกับ — ไม่งั้นคำถามวิเคราะห์อิสระจะโดนดักตอบผิดโหมด
+  const asksAmount = has('เท่าไหร่', 'เท่าไร', 'เท่าใด', 'กี่บาท', 'ไปเท่า', 'รวมเท่า');
+  if (has('ออม', 'ลงทุน') && (asksAmount || has('ออมรวม', 'ลงทุนรวม', 'ออมสุทธิ', 'ลงทุนสุทธิ'))) {
+    return `ช่วงที่เลือก คุณออม/ลงทุนสุทธิ ${fmtTHB.format(k.savingsNet)} (ใส่เงิน ${fmtTHB.format(k.savingsOut)} · ถอน/ขายคืน ${fmtTHB.format(k.savingsIn)})`;
+  }
+  if (has('รายรับ', 'ได้เงิน', 'หาได้') && (asksAmount || has('รายรับรวม'))) {
+    return `รายรับรวมช่วงที่เลือกคือ ${fmtTHB.format(k.income)} จาก ${fmtNum.format(k.count)} รายการทั้งหมดครับ`;
+  }
+  if (has('ใช้ไป', 'ใช้เงิน', 'รายจ่าย', 'จ่ายไป') && (asksAmount || has('รายจ่ายรวม'))) {
+    return `รายจ่ายรวมช่วงที่เลือกคือ ${fmtTHB.format(k.expense)} — เฉลี่ยประมาณ ${fmtTHB.format(k.avgDay)}/วันครับ`;
+  }
+  if (has('คงเหลือ', 'เหลือเงิน', 'สุทธิ') && (asksAmount || has('คงเหลือสุทธิ'))) {
+    return `คงเหลือสุทธิหลังหักออม/ลงทุนของช่วงที่เลือกคือ ${fmtTHB.format(k.netAfterSavings)} (รายรับ ${fmtTHB.format(k.income)} − รายจ่าย ${fmtTHB.format(k.expense)} − ออม/ลงทุน ${fmtTHB.format(k.savingsNet)})`;
+  }
+  return null;
+}
+
+/* ---------- Gemini ---------- */
+async function callGemini(question) {
+  const summary = buildAISummary();
+  const systemText =
+    'คุณคือเลขาผู้ช่วยวิเคราะห์การเงินส่วนบุคคล ตอบเป็นภาษาไทย กระชับ อ้างอิงตัวเลขจาก "ข้อมูลสรุป" ที่ให้เท่านั้น ' +
+    'ยอดเงินเป็นค่าปัดเศษ ชื่อบัญชีถูกปิดบังเป็น บัญชี A/B/C ให้เรียกตามนั้น ห้ามเดาข้อมูลที่ไม่มี ถ้าข้อมูลไม่พอให้บอกตรงๆ ' +
+    'ให้คำแนะนำเชิงปฏิบัติได้แต่ต้องระบุว่าเป็นความเห็น ไม่ใช่คำแนะนำการลงทุนอย่างเป็นทางการ';
+  const body = {
+    system_instruction: { parts: [{ text: systemText }] },
+    contents: [
+      ...chatState.history.slice(-8).map(h => ({ role: h.role === 'user' ? 'user' : 'model', parts: [{ text: h.text }] })),
+      { role: 'user', parts: [{ text: 'ข้อมูลสรุป (JSON):\n' + JSON.stringify(summary) + '\n\nคำถาม: ' + question }] },
+    ],
+    generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
+  };
+  const res = await fetch(GEMINI_URL(aiGetKey()), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = new Error('HTTP ' + res.status);
+    err.status = res.status;
+    throw err;
+  }
+  const data = await res.json();
+  const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+  if (!text) throw new Error('empty');
+  return { text, sentPayload: { คำถาม: question, ข้อมูลสรุปที่ส่ง: summary } };
+}
+
+function aiErrorText(e) {
+  if (e.status === 400 || e.status === 403) return 'API key ไม่ถูกต้องหรือหมดอายุ — ตรวจสอบใน ⚙️ ตั้งค่า';
+  if (e.status === 429) return 'โควต้าฟรีของวันนี้หมดแล้ว ลองใหม่พรุ่งนี้ หรือถามคำถามพื้นฐานที่ตอบในเครื่องได้';
+  return 'เชื่อมต่อ Gemini ไม่ได้ (' + (e.message || e) + ') — ลองใหม่อีกครั้ง';
+}
+
+/* ---------- UI ---------- */
+function chatAddMsg(role, text, opts = {}) {
+  const wrap = document.getElementById('chatMsgs');
+  const div = document.createElement('div');
+  div.className = 'chat-bubble ' + (role === 'user' ? 'user' : 'bot');
+  // escape เสมอ กัน XSS จากคำตอบ AI แล้วค่อยแปลง markdown ขั้นต่ำ (ขึ้นบรรทัด/ตัวหนา)
+  let html = escapeHtml(text).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+  if (opts.badge) html += `<div class="chat-badge">${escapeHtml(opts.badge)}</div>`;
+  if (opts.sentPayload) {
+    html += `<details><summary>👀 ดูข้อมูลที่ส่งไป</summary><pre>${escapeHtml(JSON.stringify(opts.sentPayload, null, 1))}</pre></details>`;
+  }
+  div.innerHTML = html;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+  return div;
+}
+
+function chatUpdateModeLabel() {
+  const el = document.getElementById('chatModeLabel');
+  if (aiLocalOnly())      el.textContent = '🔒 โหมดในเครื่องเท่านั้น — ข้อมูลไม่ออกจากอุปกรณ์';
+  else if (aiEnabled())   el.textContent = '☁️ เชื่อม Gemini แล้ว — ส่งเฉพาะข้อมูลสรุปปิดบังตัวตน';
+  else                    el.textContent = 'โหมดในเครื่อง — กด ⚙️ เพื่อเชื่อม AI (ฟรี)';
+}
+
+async function chatHandleSend() {
+  const input = document.getElementById('chatInput');
+  const q = input.value.trim();
+  if (!q || chatState.busy) return;
+  input.value = '';
+  chatAddMsg('user', q);
+  chatState.history.push({ role: 'user', text: q });
+
+  const local = answerLocally(q);
+  if (local) {
+    chatAddMsg('bot', local, { badge: '🔒 ตอบจากข้อมูลในเครื่อง — ไม่มีอะไรถูกส่งออก' });
+    chatState.history.push({ role: 'bot', text: local });
+    return;
+  }
+  if (!aiEnabled()) {
+    const msg = aiLocalOnly()
+      ? 'อยู่ในโหมดในเครื่องเท่านั้น — คำถามนี้เกินสูตรสำเร็จที่ตอบเองได้ ปิดโหมดนี้ใน ⚙️ ถ้าต้องการให้ AI ช่วยวิเคราะห์ครับ'
+      : 'คำถามนี้ต้องใช้ AI ช่วยวิเคราะห์ — กด ⚙️ เชื่อม Google Gemini (ฟรี) ก่อนนะครับ หรือพิมพ์ "ช่วยอะไรได้บ้าง" เพื่อดูคำถามที่ตอบได้ทันที';
+    chatAddMsg('bot', msg);
+    return;
+  }
+  chatState.busy = true;
+  const typing = chatAddMsg('bot', 'กำลังวิเคราะห์…');
+  try {
+    const { text, sentPayload } = await callGemini(q);
+    typing.remove();
+    const shown = unmaskAccounts(text);
+    chatAddMsg('bot', shown, { badge: '☁️ วิเคราะห์โดย Gemini จากข้อมูลสรุปเท่านั้น', sentPayload });
+    chatState.history.push({ role: 'bot', text });
+  } catch (e) {
+    typing.remove();
+    chatAddMsg('bot', '⚠️ ' + aiErrorText(e));
+  } finally {
+    chatState.busy = false;
+  }
+}
+
+function setupChatUI() {
+  const fab = document.getElementById('chatFab');
+  const panel = document.getElementById('chatPanel');
+  fab.addEventListener('click', () => {
+    panel.classList.toggle('hidden');
+    fab.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden') && !document.getElementById('chatMsgs').children.length) {
+      chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขาผู้ช่วยวิเคราะห์การเงินของคุณ\nลองถามว่า "หมวดไหนใช้เยอะสุด" หรือพิมพ์ "ช่วยอะไรได้บ้าง" ได้เลย');
+    }
+    chatUpdateModeLabel();
+  });
+  document.getElementById('chatCloseBtn').addEventListener('click', () => { panel.classList.add('hidden'); fab.classList.remove('hidden'); });
+  document.getElementById('chatSettingsBtn').addEventListener('click', () => {
+    const s = document.getElementById('chatSettings');
+    s.classList.toggle('hidden');
+    if (!s.classList.contains('hidden')) {
+      document.getElementById('aiKeyInput').value = aiGetKey();
+      document.getElementById('aiKeySession').checked = !!sessionStorage.getItem('aiKey');
+      document.getElementById('aiLocalOnlyChk').checked = aiLocalOnly();
+    }
+  });
+  document.getElementById('chatSend').addEventListener('click', chatHandleSend);
+  document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') chatHandleSend(); });
+
+  document.getElementById('aiLocalOnlyChk').addEventListener('change', e => {
+    localStorage.setItem('aiLocalOnly', e.target.checked ? 'yes' : 'no');
+    chatUpdateModeLabel();
+  });
+  document.getElementById('aiKeySave').addEventListener('click', () => {
+    const key = document.getElementById('aiKeyInput').value.trim();
+    if (!key) return;
+    if (!aiConsented()) {
+      chatState.pendingKey = key;
+      document.getElementById('consentPreview').textContent = JSON.stringify(buildAISummary(), null, 1);
+      document.getElementById('aiConsentModal').classList.remove('hidden');
+      return;
+    }
+    aiStoreKey(key);
+  });
+  document.getElementById('aiKeyDelete').addEventListener('click', () => {
+    localStorage.removeItem('aiKey'); sessionStorage.removeItem('aiKey');
+    document.getElementById('aiKeyInput').value = '';
+    chatUpdateModeLabel();
+    chatAddMsg('bot', '🗑️ ลบ API key ออกจากเครื่องแล้ว — กลับมาอยู่โหมดในเครื่องเท่านั้น');
+  });
+  document.getElementById('consentAccept').addEventListener('click', () => {
+    localStorage.setItem('aiConsent', 'yes');
+    document.getElementById('aiConsentModal').classList.add('hidden');
+    if (chatState.pendingKey) { aiStoreKey(chatState.pendingKey); chatState.pendingKey = null; }
+  });
+  document.getElementById('consentCancel').addEventListener('click', () => {
+    chatState.pendingKey = null;
+    document.getElementById('aiConsentModal').classList.add('hidden');
+  });
+}
+
+function aiStoreKey(key) {
+  const useSession = document.getElementById('aiKeySession').checked;
+  // เก็บที่เดียวเท่านั้น — sessionStorage (ชั่วคราว) หรือ localStorage (ถาวรในเครื่องนี้)
+  localStorage.removeItem('aiKey'); sessionStorage.removeItem('aiKey');
+  (useSession ? sessionStorage : localStorage).setItem('aiKey', key);
+  document.getElementById('chatSettings').classList.add('hidden');
+  chatUpdateModeLabel();
+  chatAddMsg('bot', '✅ เชื่อมต่อ Gemini แล้ว! ถามคำถามวิเคราะห์อิสระได้เลย เช่น "เดือนไหนผิดปกติ" หรือ "ช่วยแนะนำวิธีลดรายจ่าย" — ทุกคำตอบจะมีปุ่มให้ดูว่าส่งข้อมูลอะไรออกไปบ้าง');
+}
+
+setupChatUI();
 
 /* =========================================================
  *  EVENT BINDINGS
