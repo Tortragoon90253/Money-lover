@@ -475,6 +475,7 @@
       <div id="chatModeLabel" class="text-[11px]" style="color:var(--ink3)">ยังไม่เชื่อม AI — กด ⚙️ เพื่อเชื่อม Gemini (ฟรี)</div>
     </div>
     <div class="flex gap-1.5">
+      <button id="chatNewBtn" class="chat-icon-btn" title="เริ่มแชทใหม่">✚</button>
       <button id="chatSettingsBtn" class="chat-icon-btn" title="ตั้งค่า AI">⚙️</button>
       <button id="chatCloseBtn" class="chat-icon-btn" title="ปิด">✕</button>
     </div>
@@ -2599,18 +2600,26 @@ async function chatHandleSend() {
 function setupChatUI() {
   const fab = document.getElementById('chatFab');
   const panel = document.getElementById('chatPanel');
+  const chatWelcome = () => {
+    if (aiEnabled()) {
+      chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nลองถามได้เลย เช่น "หมวดไหนใช้เยอะสุด" · "เดือนไหนใช้จ่ายผิดปกติ" · "ช่วยแนะนำวิธีลดรายจ่าย"');
+    } else {
+      chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nก่อนเริ่มใช้งาน วาง Google Gemini API key ในช่องตั้งค่าด้านบน (ขอฟรีได้ที่ aistudio.google.com/apikey)\n\n🔐 ผมจะส่งเฉพาะข้อมูลสรุปแบบปิดบังตัวตนเท่านั้น และทุกคำตอบมีปุ่มให้ดูว่าส่งอะไรออกไปบ้าง');
+      document.getElementById('chatSettings').classList.remove('hidden');
+    }
+  };
   fab.addEventListener('click', () => {
     panel.classList.toggle('hidden');
     fab.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden') && !document.getElementById('chatMsgs').children.length) {
-      if (aiEnabled()) {
-        chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nลองถามได้เลย เช่น "หมวดไหนใช้เยอะสุด" · "เดือนไหนใช้จ่ายผิดปกติ" · "ช่วยแนะนำวิธีลดรายจ่าย"');
-      } else {
-        chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nก่อนเริ่มใช้งาน วาง Google Gemini API key ในช่องตั้งค่าด้านบน (ขอฟรีได้ที่ aistudio.google.com/apikey)\n\n🔐 ผมจะส่งเฉพาะข้อมูลสรุปแบบปิดบังตัวตนเท่านั้น และทุกคำตอบมีปุ่มให้ดูว่าส่งอะไรออกไปบ้าง');
-        document.getElementById('chatSettings').classList.remove('hidden');
-      }
-    }
+    if (!panel.classList.contains('hidden') && !document.getElementById('chatMsgs').children.length) chatWelcome();
     chatUpdateModeLabel();
+  });
+  document.getElementById('chatNewBtn').addEventListener('click', () => {
+    // ล้างบทสนทนาทั้งหมด — ประวัติอยู่ในหน่วยความจำเท่านั้น ลบแล้วไม่เหลือตกค้าง
+    chatState.history = [];
+    chatState.busy = false;
+    document.getElementById('chatMsgs').innerHTML = '';
+    chatWelcome();
   });
   document.getElementById('chatCloseBtn').addEventListener('click', () => { panel.classList.add('hidden'); fab.classList.remove('hidden'); });
   document.getElementById('chatSettingsBtn').addEventListener('click', () => {
