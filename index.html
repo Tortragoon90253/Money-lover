@@ -475,6 +475,7 @@
       <div id="chatModeLabel" class="text-[11px]" style="color:var(--ink3)">ยังไม่เชื่อม AI — กด ⚙️ เพื่อเชื่อม Gemini (ฟรี)</div>
     </div>
     <div class="flex gap-1.5">
+      <button id="chatNewBtn" class="chat-icon-btn" title="เริ่มแชทใหม่">✚</button>
       <button id="chatSettingsBtn" class="chat-icon-btn" title="ตั้งค่า AI">⚙️</button>
       <button id="chatCloseBtn" class="chat-icon-btn" title="ปิด">✕</button>
     </div>
@@ -2445,6 +2446,14 @@ function aiEnabled()   { return !!aiGetKey() && aiConsented(); }
 
 const r100 = (v) => Math.round(v / 100) * 100; // ปัดเศษหลักร้อย ลดความละเอียดข้อมูลก่อนส่งออก
 
+// ตั้งนามแฝงให้ชื่อบัญชีแบบคงที่ตลอดบทสนทนา — ชื่อจริงไม่ออกจากเครื่อง
+function aliasForAccount(name) {
+  for (const [alias, n] of chatState.accountAlias) if (n === name) return alias;
+  const alias = 'บัญชี ' + String.fromCharCode(65 + chatState.accountAlias.size);
+  chatState.accountAlias.set(alias, name);
+  return alias;
+}
+
 // สร้างข้อมูลสรุปที่ "ปลอดภัยต่อการส่งออก" — ไม่มีรายการดิบ ไม่มี note ไม่มีชื่อบัญชีจริง
 function buildAISummary() {
   const flow = cashFlowRows(state.filtered);
@@ -2457,14 +2466,22 @@ function buildAISummary() {
   const incs = [...groupByIncomeCategory(flow).entries()].slice(0, 5)
     .map(([c, o]) => ({ หมวด: c, ยอดรวม: r100(o.sum) }));
   chatState.accountAlias.clear();
-  const accs = [...groupByAccount(flow).entries()].slice(0, 6).map(([name, sum], i) => {
-    const alias = 'บัญชี ' + String.fromCharCode(65 + i);
-    chatState.accountAlias.set(alias, name);
-    return { บัญชี: alias, รายจ่ายรวม: r100(sum) };
+  const accs = [...groupByAccount(flow).entries()].slice(0, 6).map(([name, sum]) => {
+    return { บัญชี: aliasForAccount(name), รายจ่ายรวม: r100(sum) };
   });
   const k = computeKPIs(state.filtered);
+
+  // บริบทฟิลเตอร์ที่ผู้ใช้เลือกบนหน้าจอ — ให้ AI ตอบอิงมุมมองเดียวกับที่ผู้ใช้เห็นอยู่
+  const f = state.filters;
+  const activeFilters = {
+    ช่วงวันที่ที่เลือก: (f.dateFrom && f.dateTo) ? `${localISODate(f.dateFrom)} ถึง ${localISODate(f.dateTo)}` : 'ทั้งหมด',
+    บัญชีที่กรอง: f.accounts.size ? [...f.accounts].map(aliasForAccount) : 'ทุกบัญชี',
+    หมวดที่กรอง: f.categories.size ? [...f.categories] : 'ทุกหมวด',
+  };
+
   return {
-    หมายเหตุ: 'ยอดทั้งหมดปัดเศษหลักร้อย (THB) ชื่อบัญชีถูกปิดบังเป็นตัวอักษร',
+    หมายเหตุ: 'ยอดทั้งหมดปัดเศษหลักร้อย (THB) ชื่อบัญชีถูกปิดบังเป็นตัวอักษร ข้อมูลสะท้อนเฉพาะช่วง/ฟิลเตอร์ที่ผู้ใช้เลือกบนหน้าจอ',
+    ฟิลเตอร์ที่ใช้อยู่: activeFilters,
     ช่วงข้อมูล: months.length ? `${months[0].เดือน} ถึง ${months[months.length - 1].เดือน}` : '-',
     สรุปรายเดือน: months,
     หมวดรายจ่ายสูงสุด: cats,
@@ -2492,6 +2509,8 @@ async function callGemini(question) {
   const summary = buildAISummary();
   const systemText =
     'คุณคือเลขาผู้ช่วยวิเคราะห์การเงินส่วนบุคคล ตอบเป็นภาษาไทย กระชับ อ้างอิงตัวเลขจาก "ข้อมูลสรุป" ที่ให้เท่านั้น ' +
+    'ข้อมูลสรุปสะท้อนเฉพาะช่วงเวลา/บัญชี/หมวดตามฟิลเตอร์ใน "ฟิลเตอร์ที่ใช้อยู่" ซึ่งเป็นมุมมองที่ผู้ใช้กำลังดูบนหน้าจอ ' +
+    'ให้ตอบอิงมุมมองนั้นและระบุช่วงเวลาหรือขอบเขตที่วิเคราะห์ไว้ในคำตอบเมื่อช่วยให้เข้าใจง่ายขึ้น ถ้าผู้ใช้ถามถึงข้อมูลนอกฟิลเตอร์ ให้บอกว่ามองไม่เห็นและแนะนำให้ปรับฟิลเตอร์บนหน้าจอ ' +
     'ยอดเงินเป็นค่าปัดเศษ ชื่อบัญชีถูกปิดบังเป็น บัญชี A/B/C ให้เรียกตามนั้น ห้ามเดาข้อมูลที่ไม่มี ถ้าข้อมูลไม่พอให้บอกตรงๆ ' +
     'ให้คำแนะนำเชิงปฏิบัติได้แต่ต้องระบุว่าเป็นความเห็น ไม่ใช่คำแนะนำการลงทุนอย่างเป็นทางการ';
   const body = {
@@ -2581,18 +2600,26 @@ async function chatHandleSend() {
 function setupChatUI() {
   const fab = document.getElementById('chatFab');
   const panel = document.getElementById('chatPanel');
+  const chatWelcome = () => {
+    if (aiEnabled()) {
+      chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nลองถามได้เลย เช่น "หมวดไหนใช้เยอะสุด" · "เดือนไหนใช้จ่ายผิดปกติ" · "ช่วยแนะนำวิธีลดรายจ่าย"');
+    } else {
+      chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nก่อนเริ่มใช้งาน วาง Google Gemini API key ในช่องตั้งค่าด้านบน (ขอฟรีได้ที่ aistudio.google.com/apikey)\n\n🔐 ผมจะส่งเฉพาะข้อมูลสรุปแบบปิดบังตัวตนเท่านั้น และทุกคำตอบมีปุ่มให้ดูว่าส่งอะไรออกไปบ้าง');
+      document.getElementById('chatSettings').classList.remove('hidden');
+    }
+  };
   fab.addEventListener('click', () => {
     panel.classList.toggle('hidden');
     fab.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden') && !document.getElementById('chatMsgs').children.length) {
-      if (aiEnabled()) {
-        chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nลองถามได้เลย เช่น "หมวดไหนใช้เยอะสุด" · "เดือนไหนใช้จ่ายผิดปกติ" · "ช่วยแนะนำวิธีลดรายจ่าย"');
-      } else {
-        chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nก่อนเริ่มใช้งาน วาง Google Gemini API key ในช่องตั้งค่าด้านบน (ขอฟรีได้ที่ aistudio.google.com/apikey)\n\n🔐 ผมจะส่งเฉพาะข้อมูลสรุปแบบปิดบังตัวตนเท่านั้น และทุกคำตอบมีปุ่มให้ดูว่าส่งอะไรออกไปบ้าง');
-        document.getElementById('chatSettings').classList.remove('hidden');
-      }
-    }
+    if (!panel.classList.contains('hidden') && !document.getElementById('chatMsgs').children.length) chatWelcome();
     chatUpdateModeLabel();
+  });
+  document.getElementById('chatNewBtn').addEventListener('click', () => {
+    // ล้างบทสนทนาทั้งหมด — ประวัติอยู่ในหน่วยความจำเท่านั้น ลบแล้วไม่เหลือตกค้าง
+    chatState.history = [];
+    chatState.busy = false;
+    document.getElementById('chatMsgs').innerHTML = '';
+    chatWelcome();
   });
   document.getElementById('chatCloseBtn').addEventListener('click', () => { panel.classList.add('hidden'); fab.classList.remove('hidden'); });
   document.getElementById('chatSettingsBtn').addEventListener('click', () => {
