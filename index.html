@@ -2524,7 +2524,12 @@ async function callGemini(question) {
       ...chatState.history.slice(-8).map(h => ({ role: h.role === 'user' ? 'user' : 'model', parts: [{ text: h.text }] })),
       { role: 'user', parts: [{ text: 'ข้อมูลสรุป (JSON):\n' + JSON.stringify(summary) + '\n\nคำถาม: ' + question }] },
     ],
-    generationConfig: { temperature: 0.9, topP: 0.95, maxOutputTokens: 2048 },
+    generationConfig: {
+      temperature: 0.9, topP: 0.95, maxOutputTokens: 4096,
+      // gemini-2.5-flash เป็นโมเดล "คิดก่อนตอบ" โทเคนคิดกินโควตา maxOutputTokens จนคำตอบถูกตัดกลางคัน
+      // ปิด thinking เพื่อคืนโควตาทั้งหมดให้คำตอบที่ผู้ใช้เห็นจริง (งานสรุป/วิเคราะห์แบบนี้ไม่ต้องคิดยาว)
+      thinkingConfig: { thinkingBudget: 0 },
+    },
   };
   const res = await fetch(GEMINI_URL(aiGetKey()), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -2535,9 +2540,17 @@ async function callGemini(question) {
     throw err;
   }
   const data = await res.json();
-  const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
-  if (!text) throw new Error('empty');
-  return { text, sentPayload: { คำถาม: question, ข้อมูลสรุปที่ส่ง: summary } };
+  const cand = data.candidates?.[0];
+  const text = (cand?.content?.parts || []).map(p => p.text || '').join('').trim();
+  const finish = cand?.finishReason;
+  if (!text) {
+    // ถูกบล็อกด้วยตัวกรองความปลอดภัย หรือคิดจนหมดโควตาก่อนได้คำตอบ
+    if (finish === 'SAFETY' || finish === 'RECITATION') throw new Error('คำถามนี้ถูกตัวกรองของ Gemini ปฏิเสธ ลองเปลี่ยนคำถามดูนะครับ');
+    if (finish === 'MAX_TOKENS') throw new Error('คำตอบยาวเกินโควตา ลองถามให้เจาะจงขึ้น หรือแบ่งเป็นหลายคำถามย่อยครับ');
+    throw new Error('empty');
+  }
+  // MAX_TOKENS = คำตอบถูกตัดกลางคันเพราะชนเพดานความยาว
+  return { text, truncated: finish === 'MAX_TOKENS', sentPayload: { คำถาม: question, ข้อมูลสรุปที่ส่ง: summary } };
 }
 
 function aiErrorText(e) {
@@ -2589,10 +2602,13 @@ async function chatHandleSend() {
   chatState.busy = true;
   const typing = chatAddMsg('bot', 'กำลังวิเคราะห์…');
   try {
-    const { text, sentPayload } = await callGemini(q);
+    const { text, truncated, sentPayload } = await callGemini(q);
     typing.remove();
     const shown = unmaskAccounts(text);
-    chatAddMsg('bot', shown, { badge: '☁️ วิเคราะห์โดย Gemini จากข้อมูลสรุปเท่านั้น', sentPayload });
+    const badge = truncated
+      ? '✂️ คำตอบยาวเกินไปเลยถูกตัด — พิมพ์ "เล่าต่อ" ให้พูดต่อได้'
+      : '☁️ วิเคราะห์โดย Gemini จากข้อมูลสรุปเท่านั้น';
+    chatAddMsg('bot', shown, { badge, sentPayload });
     chatState.history.push({ role: 'bot', text });
   } catch (e) {
     typing.remove();
