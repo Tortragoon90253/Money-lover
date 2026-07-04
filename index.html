@@ -178,7 +178,12 @@
     font-size:.65rem; max-height:180px; overflow:auto; white-space:pre-wrap;
   }
   .chat-badge { font-size:.65rem; color:var(--ink3); margin-top:.25rem; }
-  .chat-inputrow { display:flex; gap:.5rem; padding:.7rem .8rem; border-top:1px solid var(--sep); background:var(--card); }
+  .chat-inputrow { display:flex; gap:.5rem; align-items:flex-end; padding:.7rem .8rem; border-top:1px solid var(--sep); background:var(--card); }
+  #chatInput {
+    resize:none; overflow-y:auto; max-height:120px; line-height:1.45;
+    font-family:inherit; font-size:.85rem;
+  }
+  .chat-inputrow .btn-solid { flex:none; }
   .chat-settings { padding:.9rem 1rem; border-bottom:1px solid var(--sep); background:#FAFAFC; font-size:.8rem; }
   #aiConsentModal {
     position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.4);
@@ -494,7 +499,7 @@
 
   <div id="chatMsgs" class="chat-msgs"></div>
   <div class="chat-inputrow">
-    <input id="chatInput" class="field flex-1" placeholder="ถามเรื่องการเงินของคุณ..." autocomplete="off" />
+    <textarea id="chatInput" class="field flex-1" rows="1" placeholder="ถามเรื่องการเงินของคุณ... (Enter ส่ง · Shift+Enter ขึ้นบรรทัดใหม่)"></textarea>
     <button id="chatSend" class="btn-solid" style="padding:.45rem .95rem">➤</button>
   </div>
 </div>
@@ -2524,7 +2529,12 @@ async function callGemini(question) {
       ...chatState.history.slice(-8).map(h => ({ role: h.role === 'user' ? 'user' : 'model', parts: [{ text: h.text }] })),
       { role: 'user', parts: [{ text: 'ข้อมูลสรุป (JSON):\n' + JSON.stringify(summary) + '\n\nคำถาม: ' + question }] },
     ],
-    generationConfig: { temperature: 0.9, topP: 0.95, maxOutputTokens: 2048 },
+    generationConfig: {
+      temperature: 0.9, topP: 0.95, maxOutputTokens: 4096,
+      // gemini-2.5-flash เป็นโมเดล "คิดก่อนตอบ" โทเคนคิดกินโควตา maxOutputTokens จนคำตอบถูกตัดกลางคัน
+      // ปิด thinking เพื่อคืนโควตาทั้งหมดให้คำตอบที่ผู้ใช้เห็นจริง (งานสรุป/วิเคราะห์แบบนี้ไม่ต้องคิดยาว)
+      thinkingConfig: { thinkingBudget: 0 },
+    },
   };
   const res = await fetch(GEMINI_URL(aiGetKey()), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -2535,9 +2545,17 @@ async function callGemini(question) {
     throw err;
   }
   const data = await res.json();
-  const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
-  if (!text) throw new Error('empty');
-  return { text, sentPayload: { คำถาม: question, ข้อมูลสรุปที่ส่ง: summary } };
+  const cand = data.candidates?.[0];
+  const text = (cand?.content?.parts || []).map(p => p.text || '').join('').trim();
+  const finish = cand?.finishReason;
+  if (!text) {
+    // ถูกบล็อกด้วยตัวกรองความปลอดภัย หรือคิดจนหมดโควตาก่อนได้คำตอบ
+    if (finish === 'SAFETY' || finish === 'RECITATION') throw new Error('คำถามนี้ถูกตัวกรองของ Gemini ปฏิเสธ ลองเปลี่ยนคำถามดูนะครับ');
+    if (finish === 'MAX_TOKENS') throw new Error('คำตอบยาวเกินโควตา ลองถามให้เจาะจงขึ้น หรือแบ่งเป็นหลายคำถามย่อยครับ');
+    throw new Error('empty');
+  }
+  // MAX_TOKENS = คำตอบถูกตัดกลางคันเพราะชนเพดานความยาว
+  return { text, truncated: finish === 'MAX_TOKENS', sentPayload: { คำถาม: question, ข้อมูลสรุปที่ส่ง: summary } };
 }
 
 function aiErrorText(e) {
@@ -2574,6 +2592,7 @@ async function chatHandleSend() {
   const q = input.value.trim();
   if (!q || chatState.busy) return;
   input.value = '';
+  input.style.height = 'auto'; // รีเซ็ตความสูงกลับเป็นบรรทัดเดียวหลังส่ง
   chatAddMsg('user', q);
   chatState.history.push({ role: 'user', text: q });
 
@@ -2589,10 +2608,13 @@ async function chatHandleSend() {
   chatState.busy = true;
   const typing = chatAddMsg('bot', 'กำลังวิเคราะห์…');
   try {
-    const { text, sentPayload } = await callGemini(q);
+    const { text, truncated, sentPayload } = await callGemini(q);
     typing.remove();
     const shown = unmaskAccounts(text);
-    chatAddMsg('bot', shown, { badge: '☁️ วิเคราะห์โดย Gemini จากข้อมูลสรุปเท่านั้น', sentPayload });
+    const badge = truncated
+      ? '✂️ คำตอบยาวเกินไปเลยถูกตัด — พิมพ์ "เล่าต่อ" ให้พูดต่อได้'
+      : '☁️ วิเคราะห์โดย Gemini จากข้อมูลสรุปเท่านั้น';
+    chatAddMsg('bot', shown, { badge, sentPayload });
     chatState.history.push({ role: 'bot', text });
   } catch (e) {
     typing.remove();
@@ -2636,7 +2658,14 @@ function setupChatUI() {
     }
   });
   document.getElementById('chatSend').addEventListener('click', chatHandleSend);
-  document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') chatHandleSend(); });
+  const chatInput = document.getElementById('chatInput');
+  // ขยายความสูงตามข้อความ (ขึ้นบรรทัดใหม่เมื่อสุดขอบ) จนถึง max-height แล้วค่อยเลื่อนภายใน
+  const autoGrow = () => { chatInput.style.height = 'auto'; chatInput.style.height = chatInput.scrollHeight + 'px'; };
+  chatInput.addEventListener('input', autoGrow);
+  chatInput.addEventListener('keydown', e => {
+    // Enter = ส่ง / Shift+Enter = ขึ้นบรรทัดใหม่
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatHandleSend(); }
+  });
 
   document.getElementById('aiKeySave').addEventListener('click', () => {
     const key = document.getElementById('aiKeyInput').value.trim();
