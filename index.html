@@ -195,6 +195,37 @@
     max-height:85dvh; overflow-y:auto; padding:1.4rem;
     box-shadow:0 24px 64px rgba(0,0,0,.3);
   }
+  /* ---- โหมด/โมเดล ในตั้งค่า ---- */
+  .ai-set-lbl { display:block; font-size:.7rem; color:var(--ink3); margin:.2rem 0 .25rem; }
+  .ai-mode-row { display:flex; gap:.4rem; margin-bottom:.7rem; }
+  .ai-mode-btn { flex:1; padding:.4rem; border:none; border-radius:10px; background:var(--fill); color:var(--ink2); font-size:.75rem; font-weight:600; cursor:pointer; }
+  .ai-mode-btn.on { background:var(--accent); color:#fff; }
+  #aiModelSelect { width:100%; appearance:auto; }
+  /* ---- การ์ดตัวเลือกโต้ตอบ (ask card) ---- */
+  .ai-ask-card { align-self:flex-start; max-width:90%; background:var(--accent-tint); box-shadow:inset 0 0 0 1px rgba(0,122,255,.25); border-radius:14px; padding:.6rem .7rem; display:flex; flex-direction:column; gap:.45rem; }
+  .ai-ask-card.used { opacity:.55; }
+  .ai-ask-q { font-size:.8rem; font-weight:600; color:var(--ink); }
+  .ai-ask-opts { display:flex; flex-wrap:wrap; gap:.35rem; }
+  .ai-ask-opt { padding:.35rem .7rem; border:none; box-shadow:inset 0 0 0 1px var(--accent); border-radius:999px; background:var(--card); color:var(--accent); font-size:.78rem; font-weight:600; cursor:pointer; }
+  .ai-ask-opt:hover:not(:disabled) { background:var(--accent); color:#fff; }
+  .ai-ask-opt:disabled { cursor:default; }
+  .ai-ask-row { display:flex; gap:.4rem; }
+  .ai-ask-input { flex:1; background:var(--card); border:none; border-radius:10px; padding:.4rem .6rem; font-size:.8rem; color:var(--ink); box-shadow:inset 0 0 0 1px var(--sep); }
+  .ai-ask-input:focus { outline:none; box-shadow:0 0 0 2px rgba(0,122,255,.3); }
+  .ai-ask-send { flex:none; border:none; border-radius:10px; background:var(--accent); color:#fff; padding:0 .7rem; font-size:.85rem; cursor:pointer; }
+  /* ---- โน้ต "เขียนต่อ" ---- */
+  .ai-note { align-self:center; font-size:.72rem; color:var(--ink3); display:flex; align-items:center; gap:.4rem; }
+  .ai-note-btn { border:none; border-radius:999px; background:var(--accent-tint); color:var(--accent); font-weight:600; font-size:.72rem; padding:.25rem .7rem; cursor:pointer; }
+  /* ---- ลิ้นชักห้องแชท ---- */
+  .chat-convos { position:absolute; inset:0; z-index:5; background:var(--card); display:flex; flex-direction:column; border-radius:20px; }
+  .chat-convos.hidden { display:none; }
+  .convos-head { display:flex; align-items:center; justify-content:space-between; padding:.8rem 1rem; border-bottom:1px solid var(--sep); }
+  .convos-list { flex:1; overflow-y:auto; padding:.5rem; display:flex; flex-direction:column; gap:.3rem; }
+  .convo-row { display:flex; align-items:center; gap:.3rem; padding:.2rem .3rem; border-radius:10px; }
+  .convo-row.active { background:var(--accent-tint); }
+  .convo-title { flex:1; text-align:left; border:none; background:none; color:var(--ink); font-size:.82rem; padding:.35rem .4rem; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .convo-ico { flex:none; width:28px; height:28px; border:none; border-radius:8px; background:var(--fill); cursor:pointer; font-size:.8rem; }
+  .convo-ico:hover { background:var(--fill-2); }
 </style>
 </head>
 <body class="min-h-screen">
@@ -480,6 +511,7 @@
       <div id="chatModeLabel" class="text-[11px]" style="color:var(--ink3)">ยังไม่เชื่อม AI — กด ⚙️ เพื่อเชื่อม Gemini (ฟรี)</div>
     </div>
     <div class="flex gap-1.5">
+      <button id="chatConvosBtn" class="chat-icon-btn" title="ห้องแชท">🗂</button>
       <button id="chatNewBtn" class="chat-icon-btn" title="เริ่มแชทใหม่">✚</button>
       <button id="chatSettingsBtn" class="chat-icon-btn" title="ตั้งค่า AI">⚙️</button>
       <button id="chatCloseBtn" class="chat-icon-btn" title="ปิด">✕</button>
@@ -487,14 +519,43 @@
   </div>
 
   <div id="chatSettings" class="chat-settings hidden">
-    <div class="font-semibold mb-1">เชื่อมต่อ Google Gemini (ฟรี)</div>
-    <p class="mb-2" style="color:var(--ink2)">ขอ API key ฟรีที่ <b>aistudio.google.com/apikey</b> — key ถูกเก็บไว้ใน<b>อุปกรณ์นี้เท่านั้น</b> ไม่ sync ขึ้นคลาวด์ ไม่ติดไปกับลิงก์แชร์</p>
-    <input id="aiKeyInput" type="password" class="field w-full mb-2" placeholder="วาง API key (AIza...)" autocomplete="off" />
-    <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="aiKeySession" /> เก็บ key ชั่วคราว (ปิดแท็บแล้วหาย — เหมาะกับเครื่องสาธารณะ)</label>
-    <div class="flex gap-2">
-      <button id="aiKeySave" class="btn-solid" style="padding:.35rem .9rem;font-size:.75rem">บันทึก</button>
-      <button id="aiKeyDelete" class="btn-tint" style="padding:.35rem .9rem;font-size:.75rem;color:#c93534;background:rgba(201,53,52,.1)">ลบ key ออกจากเครื่อง</button>
+    <div class="ai-mode-row">
+      <button id="aiModeKey" class="ai-mode-btn on" type="button">🔑 คีย์ส่วนตัว</button>
+      <button id="aiModeProxy" class="ai-mode-btn" type="button">🌐 Proxy</button>
     </div>
+
+    <label class="ai-set-lbl">โมเดล Gemini</label>
+    <select id="aiModelSelect" class="field mb-2">
+      <option value="gemini-2.5-flash">gemini-2.5-flash (แนะนำ · เร็ว+ฉลาด)</option>
+      <option value="gemini-2.0-flash">gemini-2.0-flash (เร็วมาก)</option>
+      <option value="gemini-2.5-pro">gemini-2.5-pro (ฉลาดสุด · ช้ากว่า)</option>
+      <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+    </select>
+
+    <div id="aiKeySection">
+      <p class="mb-2" style="color:var(--ink2)">ขอ API key ฟรีที่ <b>aistudio.google.com/apikey</b> — key ถูกเก็บไว้ใน<b>อุปกรณ์นี้เท่านั้น</b> ไม่ sync ขึ้นคลาวด์ ไม่ติดไปกับลิงก์แชร์</p>
+      <input id="aiKeyInput" type="password" class="field w-full mb-2" placeholder="วาง API key (AIza...)" autocomplete="off" />
+      <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="aiKeySession" /> เก็บ key ชั่วคราว (ปิดแท็บแล้วหาย — เหมาะกับเครื่องสาธารณะ)</label>
+      <div class="flex gap-2">
+        <button id="aiKeySave" class="btn-solid" style="padding:.35rem .9rem;font-size:.75rem">บันทึก</button>
+        <button id="aiKeyDelete" class="btn-tint" style="padding:.35rem .9rem;font-size:.75rem;color:#c93534;background:rgba(201,53,52,.1)">ลบ key ออกจากเครื่อง</button>
+      </div>
+    </div>
+
+    <div id="aiProxySection" class="hidden">
+      <p class="mb-2" style="color:var(--ink2)">โหมด Proxy: เบราว์เซอร์ <b>ไม่ต้องมี key เอง</b> — key อยู่ฝั่งเซิร์ฟเวอร์ ใช้ร่วมกันได้ (เหมาะกับการแชร์ให้คนอื่น) วิธีติดตั้งดูใน <b>functions/README.md</b></p>
+      <input id="aiProxyUrl" type="url" class="field w-full mb-2" placeholder="https://asia-southeast1-xxx.cloudfunctions.net/askAI" />
+      <input id="aiAccessCode" type="password" class="field w-full mb-2" placeholder="รหัสเข้าใช้ (access code — ถ้ามี)" autocomplete="off" />
+      <button id="aiProxySave" class="btn-solid" style="padding:.35rem .9rem;font-size:.75rem">บันทึก Proxy</button>
+    </div>
+  </div>
+
+  <div id="chatConvos" class="chat-convos hidden">
+    <div class="convos-head">
+      <span class="font-semibold text-sm">🗂 ห้องแชท</span>
+      <button id="chatConvosClose" class="chat-icon-btn" title="ปิด">✕</button>
+    </div>
+    <div id="chatConvosList" class="convos-list"></div>
   </div>
 
   <div id="chatMsgs" class="chat-msgs"></div>
@@ -508,7 +569,7 @@
 <div id="aiConsentModal" class="hidden">
   <div class="modal-card">
     <h3 class="text-lg font-bold mb-2">🔐 ก่อนเปิดใช้ AI ภายนอก</h3>
-    <p class="text-sm mb-3" style="color:var(--ink2)">เมื่อถามคำถามอิสระ ระบบจะส่ง<b>ข้อมูลสรุปแบบปิดบังตัวตน</b>ไปยัง Google Gemini ผ่าน HTTPS โดยตรง (ไม่มีตัวกลาง)</p>
+    <p class="text-sm mb-3" style="color:var(--ink2)">เมื่อถามคำถามอิสระ ระบบจะส่ง<b>ข้อมูลสรุปแบบปิดบังตัวตน</b>ไปยัง Google Gemini ผ่าน HTTPS (โหมดคีย์ส่วนตัว = ตรงถึง Google · โหมด Proxy = ผ่านเซิร์ฟเวอร์ที่คุณตั้งเอง)</p>
     <div class="text-sm mb-3">
       <div class="font-semibold text-income mb-1">✅ สิ่งที่ส่ง</div>
       <ul class="list-disc list-inside mb-2" style="color:var(--ink2)">
@@ -2440,14 +2501,35 @@ function onDataLoaded() {
  *  AI CHAT — เลขาผู้ช่วยวิเคราะห์ (rule-based ในเครื่อง + Gemini BYOK)
  *  ความปลอดภัย: ส่งเฉพาะยอดสรุปปัดเศษ+ปิดบังชื่อบัญชี / key อยู่ในเครื่องเท่านั้น
  * ========================================================= */
-const GEMINI_MODEL = 'gemini-2.5-flash';
-// endpoint เดียวที่อนุญาต — ห้ามมีตัวกลางอื่น
-const GEMINI_URL = (key) => `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
-const chatState = { history: [], accountAlias: new Map(), busy: false, pendingKey: null };
+const AI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro', 'gemini-1.5-flash'];
+const GEMINI_URL = (model, key) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+const chatState = { accountAlias: new Map(), busy: false, pendingKey: null };
+
+// id สั้นๆ สำหรับตั้งชื่อห้องแชท
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ---------- การตั้งค่า AI (โหมด / โมเดล / proxy) ---------- */
+const AI_CFG_DEFAULT = { mode: 'key', model: 'gemini-2.5-flash', proxyUrl: '', accessCode: '' };
+function aiLoadCfg() {
+  try { const c = JSON.parse(localStorage.getItem('aiCfg') || '{}'); if (!AI_MODELS.includes(c.model)) delete c.model; return Object.assign({}, AI_CFG_DEFAULT, c); }
+  catch (e) { return Object.assign({}, AI_CFG_DEFAULT); }
+}
+let aiCfg = aiLoadCfg();
+function aiSaveCfg() { try { localStorage.setItem('aiCfg', JSON.stringify(aiCfg)); } catch (e) {} }
 
 function aiGetKey()    { return sessionStorage.getItem('aiKey') || localStorage.getItem('aiKey') || ''; }
 function aiConsented() { return localStorage.getItem('aiConsent') === 'yes'; }
-function aiEnabled()   { return !!aiGetKey() && aiConsented(); }
+function aiReady()     { return aiCfg.mode === 'proxy' ? !!aiCfg.proxyUrl : !!aiGetKey(); }
+function aiEnabled()   { return aiReady() && aiConsented(); }
+
+/* ---------- ห้องแชทหลายห้อง (เก็บถาวรใน localStorage เครื่องนี้) ---------- */
+function chatsFresh() { const id = uid(); return { cur: id, list: [{ id, title: '', ts: Date.now(), msgs: [] }] }; }
+function chatsLoad()  { try { const c = JSON.parse(localStorage.getItem('aiChats')); if (c && Array.isArray(c.list) && c.list.length) return c; } catch (e) {} return chatsFresh(); }
+function chatsSave()  { try { localStorage.setItem('aiChats', JSON.stringify(aiChats)); } catch (e) {} }
+let aiChats = chatsLoad();
+function curChat()      { return aiChats.list.find(c => c.id === aiChats.cur) || aiChats.list[0]; }
+function chatHistory()  { return curChat().msgs; }
+function chatTitleFrom(msgs) { const first = (msgs || []).find(m => m.role === 'user'); return first ? first.text.slice(0, 28) : 'แชทใหม่'; }
 
 const r100 = (v) => Math.round(v / 100) * 100; // ปัดเศษหลักร้อย ลดความละเอียดข้อมูลก่อนส่งออก
 
@@ -2509,7 +2591,7 @@ function unmaskAccounts(text) {
   return out;
 }
 
-/* ---------- Gemini ---------- */
+/* ---------- Gemini (โหมด key = เรียกตรง / โหมด proxy = ผ่านเซิร์ฟเวอร์) ---------- */
 async function callGemini(question) {
   const summary = buildAISummary();
   const systemText =
@@ -2522,46 +2604,87 @@ async function callGemini(question) {
     '• ตัวเลขเป็นค่าปัดเศษโดยประมาณ พูดทำนอง "ราวๆ/ประมาณ" ได้ ไม่ต้องเป๊ะ\n' +
     '• ชื่อบัญชีถูกปิดบังเป็น บัญชี A/B/C ให้เรียกตามนั้น\n' +
     '• ข้อมูลสะท้อนเฉพาะช่วง/ฟิลเตอร์ใน "ฟิลเตอร์ที่ใช้อยู่" ถ้าเขาถามถึงสิ่งที่อยู่นอกขอบเขตนี้ บอกตามตรงว่ายังมองไม่เห็น แล้วชวนให้ปรับฟิลเตอร์บนหน้าจอ\n' +
-    '• คำแนะนำการเงิน/ลงทุน เป็นความเห็นเชิงเพื่อนคุย ไม่ใช่คำแนะนำทางการ — แทรกให้รู้เมื่อเหมาะ ไม่ต้องย้ำทุกประโยค';
-  const body = {
-    system_instruction: { parts: [{ text: systemText }] },
+    '• คำแนะนำการเงิน/ลงทุน เป็นความเห็นเชิงเพื่อนคุย ไม่ใช่คำแนะนำทางการ — แทรกให้รู้เมื่อเหมาะ ไม่ต้องย้ำทุกประโยค\n\n' +
+    'เมื่อเหมาะที่จะให้ผู้ใช้เลือก (ถามกลับเพื่อความชัดเจน หรือเสนอแนวทางให้เลือก) ให้ปิดท้ายคำตอบด้วยบล็อกนี้ ' +
+    '(ระบบจะเปลี่ยนเป็นปุ่มให้กด ไม่แสดงเป็นข้อความ):\n' +
+    '```json\n{"action":"ask","question":"คำถามสั้นๆ","options":["ตัวเลือก 1","ตัวเลือก 2"],"allowText":true}\n```\n' +
+    'ใส่ options ได้ไม่เกิน 6 ข้อ สั้นกระชับ; allowText:true = ให้ผู้ใช้พิมพ์คำตอบเองได้ด้วย ใช้เฉพาะเมื่อจำเป็น ไม่ต้องแนบทุกครั้ง';
+  const model = AI_MODELS.includes(aiCfg.model) ? aiCfg.model : 'gemini-2.5-flash';
+  const generationConfig = { temperature: 0.9, topP: 0.95, maxOutputTokens: 4096 };
+  // เฉพาะ 2.5 เป็นโมเดล "คิดก่อนตอบ" — ปิด thinking คืนโควตาให้คำตอบจริง กันถูกตัดกลางคัน
+  if (model.startsWith('gemini-2.5')) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  const payload = {
+    systemInstruction: { parts: [{ text: systemText }] },
     contents: [
-      ...chatState.history.slice(-8).map(h => ({ role: h.role === 'user' ? 'user' : 'model', parts: [{ text: h.text }] })),
+      ...chatHistory().slice(-8).map(h => ({ role: h.role === 'user' ? 'user' : 'model', parts: [{ text: h.text }] })),
       { role: 'user', parts: [{ text: 'ข้อมูลสรุป (JSON):\n' + JSON.stringify(summary) + '\n\nคำถาม: ' + question }] },
     ],
-    generationConfig: {
-      temperature: 0.9, topP: 0.95, maxOutputTokens: 4096,
-      // gemini-2.5-flash เป็นโมเดล "คิดก่อนตอบ" โทเคนคิดกินโควตา maxOutputTokens จนคำตอบถูกตัดกลางคัน
-      // ปิด thinking เพื่อคืนโควตาทั้งหมดให้คำตอบที่ผู้ใช้เห็นจริง (งานสรุป/วิเคราะห์แบบนี้ไม่ต้องคิดยาว)
-      thinkingConfig: { thinkingBudget: 0 },
-    },
+    generationConfig,
   };
-  const res = await fetch(GEMINI_URL(aiGetKey()), {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const err = new Error('HTTP ' + res.status);
+
+  let url, opts;
+  if (aiCfg.mode === 'proxy') {
+    // ส่งให้ proxy — เบราว์เซอร์ไม่ถือ Gemini key เลย
+    url = aiCfg.proxyUrl;
+    opts = { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ model, code: aiCfg.accessCode || '' }, payload)) };
+    if (aiCfg.accessCode) opts.headers['Authorization'] = 'Bearer ' + aiCfg.accessCode;
+  } else {
+    // เรียก Gemini ตรงด้วยคีย์ส่วนตัวในเครื่อง
+    url = GEMINI_URL(model, aiGetKey());
+    opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
+  }
+
+  // เรียกจริง + ลองใหม่อัตโนมัติเมื่อเจอ overload/ชั่วคราว (429/5xx)
+  const sleep = ms => new Promise(rs => setTimeout(rs, ms));
+  const TRANSIENT = new Set([429, 500, 502, 503, 504]);
+  const MAX_TRY = 3;
+  let res, data;
+  for (let attempt = 1; ; attempt++) {
+    try { res = await fetch(url, opts); }
+    catch (e) {
+      if (attempt < MAX_TRY) { await sleep(900 * attempt + Math.random() * 400); continue; }
+      throw new Error('เชื่อมต่อไม่ได้: ' + e.message + (aiCfg.mode === 'proxy' ? ' (ตรวจ Proxy URL)' : ''));
+    }
+    try { data = await res.json(); } catch (e) { data = null; }
+    if (res.ok) break;
+    // 429 ในโหมด proxy = โควตาของ proxy หมด (ไม่ควร retry), 429 โหมด key = rate limit ของ Google (retry ได้)
+    const retryable = TRANSIENT.has(res.status) && !(aiCfg.mode === 'proxy' && res.status === 429);
+    if (retryable && attempt < MAX_TRY) { await sleep(900 * attempt + Math.random() * 400); continue; }
+    const err = new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
     err.status = res.status;
     throw err;
   }
-  const data = await res.json();
-  const cand = data.candidates?.[0];
+  const cand = data && data.candidates && data.candidates[0];
   const text = (cand?.content?.parts || []).map(p => p.text || '').join('').trim();
   const finish = cand?.finishReason;
   if (!text) {
-    // ถูกบล็อกด้วยตัวกรองความปลอดภัย หรือคิดจนหมดโควตาก่อนได้คำตอบ
     if (finish === 'SAFETY' || finish === 'RECITATION') throw new Error('คำถามนี้ถูกตัวกรองของ Gemini ปฏิเสธ ลองเปลี่ยนคำถามดูนะครับ');
     if (finish === 'MAX_TOKENS') throw new Error('คำตอบยาวเกินโควตา ลองถามให้เจาะจงขึ้น หรือแบ่งเป็นหลายคำถามย่อยครับ');
+    const pf = data && data.promptFeedback;
+    if (pf && pf.blockReason) throw new Error('คำถามถูกกรองด้วยนโยบายความปลอดภัยของ Gemini (' + pf.blockReason + ')');
     throw new Error('empty');
   }
-  // MAX_TOKENS = คำตอบถูกตัดกลางคันเพราะชนเพดานความยาว
   return { text, truncated: finish === 'MAX_TOKENS', sentPayload: { คำถาม: question, ข้อมูลสรุปที่ส่ง: summary } };
 }
 
 function aiErrorText(e) {
-  if (e.status === 400 || e.status === 403) return 'API key ไม่ถูกต้องหรือหมดอายุ — ตรวจสอบใน ⚙️ ตั้งค่า';
-  if (e.status === 429) return 'โควต้าฟรีของวันนี้หมดแล้ว ลองใหม่พรุ่งนี้ หรือถามคำถามพื้นฐานที่ตอบในเครื่องได้';
-  return 'เชื่อมต่อ Gemini ไม่ได้ (' + (e.message || e) + ') — ลองใหม่อีกครั้ง';
+  if (e.status === 400 || e.status === 403) return aiCfg.mode === 'proxy' ? 'Proxy ปฏิเสธคำขอ (400/403) — ตรวจการตั้งค่า proxy ใน ⚙️' : 'API key ไม่ถูกต้องหรือหมดอายุ — ตรวจสอบใน ⚙️ ตั้งค่า';
+  if (e.status === 401) return 'รหัสเข้าใช้ (access code) ไม่ถูกต้อง — ตรวจใน ⚙️ ตั้งค่า';
+  if (e.status === 413) return 'คำขอใหญ่เกินไป ลองถามให้สั้นลง';
+  if (e.status === 429) return aiCfg.mode === 'proxy' ? 'ใช้ครบโควตาของ proxy วันนี้แล้ว ลองใหม่พรุ่งนี้' : 'โควต้าฟรีของวันนี้หมดแล้ว ลองสลับไปโมเดล gemini-2.0-flash ใน ⚙️ หรือลองใหม่พรุ่งนี้';
+  return 'เชื่อมต่อ AI ไม่ได้ (' + (e.message || e) + ') — ลองใหม่อีกครั้ง';
+}
+
+/* ---------- action parser + ตัดบล็อก action ออกจากข้อความที่แสดง ---------- */
+function stripAction(raw) {
+  return raw.replace(/```json\s*[\s\S]*?```/g, '').replace(/```[\s\S]*$/, '').trim();
+}
+function extractAction(raw) {
+  const m = raw.match(/```json\s*([\s\S]*?)```/);
+  if (!m) return null;
+  try { const o = JSON.parse(m[1].trim()); if (o && typeof o === 'object' && o.action) return o; } catch (e) {}
+  return null;
 }
 
 /* ---------- UI ---------- */
@@ -2583,25 +2706,94 @@ function chatAddMsg(role, text, opts = {}) {
 
 function chatUpdateModeLabel() {
   const el = document.getElementById('chatModeLabel');
-  if (aiEnabled()) el.textContent = '☁️ เชื่อม Gemini แล้ว — ส่งเฉพาะข้อมูลสรุปปิดบังตัวตน';
-  else             el.textContent = 'ยังไม่เชื่อม AI — กด ⚙️ เพื่อเชื่อม Gemini (ฟรี)';
+  if (!aiEnabled()) { el.textContent = aiCfg.mode === 'proxy' ? 'ยังไม่ตั้ง Proxy — กด ⚙️ เพื่อใส่ Proxy URL' : 'ยังไม่เชื่อม AI — กด ⚙️ เพื่อเชื่อม Gemini (ฟรี)'; return; }
+  el.textContent = (aiCfg.mode === 'proxy' ? '🌐 Proxy · ' : '☁️ ') + aiCfg.model + ' — ส่งเฉพาะข้อมูลสรุปปิดบังตัวตน';
 }
 
-async function chatHandleSend() {
+/* ---------- การ์ดตัวเลือกโต้ตอบ (AI ถามกลับ + ปุ่มเลือก + ช่องพิมพ์เอง) ---------- */
+function renderAskCard(o) {
+  const opts = (Array.isArray(o.options) ? o.options : []).map(x => String(x || '').trim()).filter(Boolean).slice(0, 6);
+  const allowText = o.allowText !== false;
+  if (!opts.length && !allowText) return;
+  const wrap = document.getElementById('chatMsgs');
+  const card = document.createElement('div');
+  card.className = 'ai-ask-card';
+  const disable = () => { card.classList.add('used'); card.querySelectorAll('button,input').forEach(el => el.disabled = true); };
+  if (o.question && String(o.question).trim()) { const q = document.createElement('div'); q.className = 'ai-ask-q'; q.textContent = String(o.question).trim(); card.appendChild(q); }
+  if (opts.length) {
+    const ow = document.createElement('div'); ow.className = 'ai-ask-opts';
+    opts.forEach(opt => {
+      const b = document.createElement('button'); b.className = 'ai-ask-opt'; b.textContent = opt;
+      b.onclick = () => { if (chatState.busy) return; disable(); chatSend(opt); };
+      ow.appendChild(b);
+    });
+    card.appendChild(ow);
+  }
+  if (allowText) {
+    const row = document.createElement('div'); row.className = 'ai-ask-row';
+    const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'ai-ask-input'; inp.placeholder = 'หรือพิมพ์คำตอบเอง…';
+    const snd = document.createElement('button'); snd.className = 'ai-ask-send'; snd.textContent = '➤';
+    const go = () => { const v = inp.value.trim(); if (!v || chatState.busy) return; disable(); chatSend(v); };
+    snd.onclick = go;
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    row.appendChild(inp); row.appendChild(snd); card.appendChild(row);
+  }
+  wrap.appendChild(card); wrap.scrollTop = wrap.scrollHeight;
+}
+
+/* ---------- โน้ต "เขียนต่อ" เมื่อคำตอบถูกตัดกลางคัน ---------- */
+function addContinueNote() {
+  const wrap = document.getElementById('chatMsgs');
+  const d = document.createElement('div'); d.className = 'ai-note';
+  d.appendChild(document.createTextNode('✂️ คำตอบยาวเลยถูกตัด — '));
+  const b = document.createElement('button'); b.className = 'ai-note-btn'; b.textContent = '▶ เขียนต่อ';
+  b.onclick = () => { if (chatState.busy) return; d.remove(); chatSend('เขียนต่อจากที่ค้างไว้'); };
+  d.appendChild(b); wrap.appendChild(d); wrap.scrollTop = wrap.scrollHeight;
+}
+
+function chatWelcome() {
+  if (aiEnabled()) {
+    chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nลองถามได้เลย เช่น "หมวดไหนใช้เยอะสุด" · "เดือนไหนใช้จ่ายผิดปกติ" · "ช่วยแนะนำวิธีลดรายจ่าย"');
+  } else {
+    chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\n' +
+      (aiCfg.mode === 'proxy'
+        ? 'ตั้งค่า Proxy URL ในช่องตั้งค่าด้านบนก่อนนะครับ (key อยู่ฝั่งเซิร์ฟเวอร์ ไม่ต้องมี key เอง)'
+        : 'ก่อนเริ่มใช้งาน วาง Google Gemini API key ในช่องตั้งค่าด้านบน (ขอฟรีได้ที่ aistudio.google.com/apikey)') +
+      '\n\n🔐 ผมจะส่งเฉพาะข้อมูลสรุปแบบปิดบังตัวตนเท่านั้น และทุกคำตอบมีปุ่มให้ดูว่าส่งอะไรออกไปบ้าง');
+    document.getElementById('chatSettings').classList.remove('hidden');
+  }
+}
+
+// วาดข้อความในห้องแชทปัจจุบันใหม่จากที่บันทึกไว้ (การ์ดตัวเลือก/โน้ตเป็นของสด ไม่ถูกเก็บ)
+function renderChat() {
+  const wrap = document.getElementById('chatMsgs');
+  wrap.innerHTML = '';
+  const msgs = chatHistory();
+  if (!msgs.length) { chatWelcome(); return; }
+  msgs.forEach(m => {
+    if (m.role === 'user') chatAddMsg('user', m.text);
+    else chatAddMsg('bot', unmaskAccounts(stripAction(m.text)) || '…');
+  });
+}
+
+// forcedText = ข้อความจากปุ่มตัวเลือก/เขียนต่อ (ถ้าไม่ส่งจะอ่านจากช่องพิมพ์)
+async function chatSend(forcedText) {
   const input = document.getElementById('chatInput');
-  const q = input.value.trim();
+  const q = (forcedText != null ? forcedText : input.value).trim();
   if (!q || chatState.busy) return;
-  input.value = '';
-  input.style.height = 'auto'; // รีเซ็ตความสูงกลับเป็นบรรทัดเดียวหลังส่ง
+  if (forcedText == null) { input.value = ''; input.style.height = 'auto'; }
   chatAddMsg('user', q);
-  chatState.history.push({ role: 'user', text: q });
+  chatHistory().push({ role: 'user', text: q });
+  chatsSave();
 
   if (!state.filtered.length) {
     chatAddMsg('bot', 'ยังไม่มีข้อมูล — อัปโหลดไฟล์ CSV ก่อนนะครับ');
     return;
   }
   if (!aiEnabled()) {
-    chatAddMsg('bot', 'ยังไม่ได้เชื่อมต่อ AI — กด ⚙️ มุมขวาบน แล้ววาง Google Gemini API key (ขอฟรีได้ที่ aistudio.google.com/apikey) ก่อนนะครับ');
+    chatAddMsg('bot', aiCfg.mode === 'proxy'
+      ? 'ยังไม่ได้ตั้งค่า Proxy — กด ⚙️ มุมขวาบน แล้วใส่ Proxy URL ก่อนนะครับ'
+      : 'ยังไม่ได้เชื่อมต่อ AI — กด ⚙️ มุมขวาบน แล้ววาง Google Gemini API key (ขอฟรีได้ที่ aistudio.google.com/apikey) ก่อนนะครับ');
     document.getElementById('chatSettings').classList.remove('hidden');
     return;
   }
@@ -2610,66 +2802,122 @@ async function chatHandleSend() {
   try {
     const { text, truncated, sentPayload } = await callGemini(q);
     typing.remove();
-    const shown = unmaskAccounts(text);
+    const shown = unmaskAccounts(stripAction(text)) || '…';
     const badge = truncated
-      ? '✂️ คำตอบยาวเกินไปเลยถูกตัด — พิมพ์ "เล่าต่อ" ให้พูดต่อได้'
-      : '☁️ วิเคราะห์โดย Gemini จากข้อมูลสรุปเท่านั้น';
+      ? '✂️ คำตอบยาวเกินไปเลยถูกตัด'
+      : (aiCfg.mode === 'proxy' ? '🌐 วิเคราะห์ผ่าน Proxy (' + aiCfg.model + ')' : '☁️ วิเคราะห์โดย ' + aiCfg.model);
     chatAddMsg('bot', shown, { badge, sentPayload });
-    chatState.history.push({ role: 'bot', text });
+    chatHistory().push({ role: 'bot', text });
+    if (!curChat().title) curChat().title = chatTitleFrom(chatHistory());
+    chatsSave();
+    if (truncated) addContinueNote();
+    const act = extractAction(text);
+    if (act && act.action === 'ask') renderAskCard(act);
   } catch (e) {
     typing.remove();
     chatAddMsg('bot', '⚠️ ' + aiErrorText(e));
   } finally {
     chatState.busy = false;
   }
+  renderConvos();
+}
+
+/* ---------- จัดการห้องแชท ---------- */
+function chatNew() {
+  const c = { id: uid(), title: '', ts: Date.now(), msgs: [] };
+  aiChats.list.unshift(c); aiChats.cur = c.id; chatState.busy = false; chatsSave();
+  renderChat(); renderConvos(); closeConvos();
+}
+function chatSwitch(id) { aiChats.cur = id; chatState.busy = false; chatsSave(); renderChat(); renderConvos(); closeConvos(); }
+function chatRename(id) {
+  const c = aiChats.list.find(x => x.id === id); if (!c) return;
+  const t = prompt('ตั้งชื่อห้องแชท:', c.title || '');
+  if (t !== null) { c.title = t.trim(); chatsSave(); renderConvos(); }
+}
+function chatDelete(id) {
+  if (!confirm('ลบห้องแชทนี้? (กู้คืนไม่ได้)')) return;
+  aiChats.list = aiChats.list.filter(x => x.id !== id);
+  if (!aiChats.list.length) aiChats = chatsFresh();
+  if (id === aiChats.cur) aiChats.cur = aiChats.list[0].id;
+  chatsSave(); renderChat(); renderConvos();
+}
+function renderConvos() {
+  const box = document.getElementById('chatConvosList');
+  if (!box) return;
+  box.innerHTML = '';
+  aiChats.list.forEach(c => {
+    const row = document.createElement('div'); row.className = 'convo-row' + (c.id === aiChats.cur ? ' active' : '');
+    const t = document.createElement('button'); t.className = 'convo-title'; t.textContent = c.title || chatTitleFrom(c.msgs); t.onclick = () => chatSwitch(c.id);
+    const rn = document.createElement('button'); rn.className = 'convo-ico'; rn.textContent = '✏️'; rn.title = 'เปลี่ยนชื่อ'; rn.onclick = () => chatRename(c.id);
+    const dl = document.createElement('button'); dl.className = 'convo-ico'; dl.textContent = '🗑️'; dl.title = 'ลบ'; dl.onclick = () => chatDelete(c.id);
+    row.appendChild(t); row.appendChild(rn); row.appendChild(dl); box.appendChild(row);
+  });
+}
+function openConvos()  { document.getElementById('chatConvos').classList.remove('hidden'); renderConvos(); }
+function closeConvos() { document.getElementById('chatConvos').classList.add('hidden'); }
+
+/* ---------- ตั้งค่า: สลับโหมด / เติมค่าในฟอร์ม ---------- */
+function setModeUI(mode) {
+  aiCfg.mode = mode;
+  document.getElementById('aiModeKey').classList.toggle('on', mode === 'key');
+  document.getElementById('aiModeProxy').classList.toggle('on', mode === 'proxy');
+  document.getElementById('aiKeySection').classList.toggle('hidden', mode !== 'key');
+  document.getElementById('aiProxySection').classList.toggle('hidden', mode !== 'proxy');
+}
+function chatSettingsRefresh() {
+  document.getElementById('aiKeyInput').value = aiGetKey();
+  document.getElementById('aiKeySession').checked = !!sessionStorage.getItem('aiKey');
+  document.getElementById('aiModelSelect').value = aiCfg.model;
+  document.getElementById('aiProxyUrl').value = aiCfg.proxyUrl || '';
+  document.getElementById('aiAccessCode').value = aiCfg.accessCode || '';
+  setModeUI(aiCfg.mode);
+}
+function finishConnect() {
+  document.getElementById('chatSettings').classList.add('hidden');
+  chatUpdateModeLabel();
+  chatAddMsg('bot', '✅ เชื่อมต่อผ่าน Proxy แล้ว! ถามคำถามวิเคราะห์ได้เลย — ทุกคำตอบมีปุ่มให้ดูว่าส่งข้อมูลอะไรออกไปบ้าง');
 }
 
 function setupChatUI() {
   const fab = document.getElementById('chatFab');
   const panel = document.getElementById('chatPanel');
-  const chatWelcome = () => {
-    if (aiEnabled()) {
-      chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nลองถามได้เลย เช่น "หมวดไหนใช้เยอะสุด" · "เดือนไหนใช้จ่ายผิดปกติ" · "ช่วยแนะนำวิธีลดรายจ่าย"');
-    } else {
-      chatAddMsg('bot', 'สวัสดีครับ 👋 ผมคือเลขา AI วิเคราะห์การเงินของคุณ\nก่อนเริ่มใช้งาน วาง Google Gemini API key ในช่องตั้งค่าด้านบน (ขอฟรีได้ที่ aistudio.google.com/apikey)\n\n🔐 ผมจะส่งเฉพาะข้อมูลสรุปแบบปิดบังตัวตนเท่านั้น และทุกคำตอบมีปุ่มให้ดูว่าส่งอะไรออกไปบ้าง');
-      document.getElementById('chatSettings').classList.remove('hidden');
-    }
-  };
   fab.addEventListener('click', () => {
-    panel.classList.toggle('hidden');
-    fab.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden') && !document.getElementById('chatMsgs').children.length) chatWelcome();
+    panel.classList.remove('hidden');
+    fab.classList.add('hidden');
+    renderChat();
     chatUpdateModeLabel();
   });
-  document.getElementById('chatNewBtn').addEventListener('click', () => {
-    // ล้างบทสนทนาทั้งหมด — ประวัติอยู่ในหน่วยความจำเท่านั้น ลบแล้วไม่เหลือตกค้าง
-    chatState.history = [];
-    chatState.busy = false;
-    document.getElementById('chatMsgs').innerHTML = '';
-    chatWelcome();
+  document.getElementById('chatNewBtn').addEventListener('click', chatNew);
+  document.getElementById('chatConvosBtn').addEventListener('click', () => {
+    const d = document.getElementById('chatConvos');
+    if (d.classList.contains('hidden')) openConvos(); else closeConvos();
   });
-  document.getElementById('chatCloseBtn').addEventListener('click', () => { panel.classList.add('hidden'); fab.classList.remove('hidden'); });
+  document.getElementById('chatConvosClose').addEventListener('click', closeConvos);
+  document.getElementById('chatCloseBtn').addEventListener('click', () => { panel.classList.add('hidden'); fab.classList.remove('hidden'); closeConvos(); });
   document.getElementById('chatSettingsBtn').addEventListener('click', () => {
     const s = document.getElementById('chatSettings');
     s.classList.toggle('hidden');
-    if (!s.classList.contains('hidden')) {
-      document.getElementById('aiKeyInput').value = aiGetKey();
-      document.getElementById('aiKeySession').checked = !!sessionStorage.getItem('aiKey');
-    }
+    if (!s.classList.contains('hidden')) chatSettingsRefresh();
   });
-  document.getElementById('chatSend').addEventListener('click', chatHandleSend);
+  document.getElementById('chatSend').addEventListener('click', () => chatSend());
   const chatInput = document.getElementById('chatInput');
   // ขยายความสูงตามข้อความ (ขึ้นบรรทัดใหม่เมื่อสุดขอบ) จนถึง max-height แล้วค่อยเลื่อนภายใน
   const autoGrow = () => { chatInput.style.height = 'auto'; chatInput.style.height = chatInput.scrollHeight + 'px'; };
   chatInput.addEventListener('input', autoGrow);
   chatInput.addEventListener('keydown', e => {
     // Enter = ส่ง / Shift+Enter = ขึ้นบรรทัดใหม่
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatHandleSend(); }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatSend(); }
   });
+
+  // สลับโหมด + เลือกโมเดล
+  document.getElementById('aiModeKey').addEventListener('click', () => { setModeUI('key'); aiSaveCfg(); chatUpdateModeLabel(); });
+  document.getElementById('aiModeProxy').addEventListener('click', () => { setModeUI('proxy'); aiSaveCfg(); chatUpdateModeLabel(); });
+  document.getElementById('aiModelSelect').addEventListener('change', e => { aiCfg.model = e.target.value; aiSaveCfg(); chatUpdateModeLabel(); });
 
   document.getElementById('aiKeySave').addEventListener('click', () => {
     const key = document.getElementById('aiKeyInput').value.trim();
     if (!key) return;
+    aiCfg.mode = 'key'; aiSaveCfg();
     if (!aiConsented()) {
       chatState.pendingKey = key;
       document.getElementById('consentPreview').textContent = JSON.stringify(buildAISummary(), null, 1);
@@ -2684,10 +2932,26 @@ function setupChatUI() {
     chatUpdateModeLabel();
     chatAddMsg('bot', '🗑️ ลบ API key ออกจากเครื่องแล้ว — จะไม่มีข้อมูลถูกส่งออกอีกจนกว่าจะเชื่อมต่อใหม่');
   });
+  document.getElementById('aiProxySave').addEventListener('click', () => {
+    const url = document.getElementById('aiProxyUrl').value.trim();
+    if (!url) return;
+    aiCfg.mode = 'proxy';
+    aiCfg.proxyUrl = url;
+    aiCfg.accessCode = document.getElementById('aiAccessCode').value.trim();
+    aiSaveCfg();
+    if (!aiConsented()) {
+      chatState.pendingKey = '__proxy__';
+      document.getElementById('consentPreview').textContent = JSON.stringify(buildAISummary(), null, 1);
+      document.getElementById('aiConsentModal').classList.remove('hidden');
+      return;
+    }
+    finishConnect();
+  });
   document.getElementById('consentAccept').addEventListener('click', () => {
     localStorage.setItem('aiConsent', 'yes');
     document.getElementById('aiConsentModal').classList.add('hidden');
-    if (chatState.pendingKey) { aiStoreKey(chatState.pendingKey); chatState.pendingKey = null; }
+    if (chatState.pendingKey === '__proxy__') { chatState.pendingKey = null; finishConnect(); }
+    else if (chatState.pendingKey) { aiStoreKey(chatState.pendingKey); chatState.pendingKey = null; }
   });
   document.getElementById('consentCancel').addEventListener('click', () => {
     chatState.pendingKey = null;
@@ -2700,6 +2964,7 @@ function aiStoreKey(key) {
   // เก็บที่เดียวเท่านั้น — sessionStorage (ชั่วคราว) หรือ localStorage (ถาวรในเครื่องนี้)
   localStorage.removeItem('aiKey'); sessionStorage.removeItem('aiKey');
   (useSession ? sessionStorage : localStorage).setItem('aiKey', key);
+  aiCfg.mode = 'key'; aiSaveCfg();
   document.getElementById('chatSettings').classList.add('hidden');
   chatUpdateModeLabel();
   chatAddMsg('bot', '✅ เชื่อมต่อ Gemini แล้ว! ถามคำถามวิเคราะห์อิสระได้เลย เช่น "เดือนไหนผิดปกติ" หรือ "ช่วยแนะนำวิธีลดรายจ่าย" — ทุกคำตอบจะมีปุ่มให้ดูว่าส่งข้อมูลอะไรออกไปบ้าง');
