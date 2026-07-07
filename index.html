@@ -2677,14 +2677,41 @@ function aiErrorText(e) {
 }
 
 /* ---------- action parser + ตัดบล็อก action ออกจากข้อความที่แสดง ---------- */
-function stripAction(raw) {
-  return raw.replace(/```json\s*[\s\S]*?```/g, '').replace(/```[\s\S]*$/, '').trim();
+// หา JSON object ที่มีคีย์ "action" — รองรับทั้งแบบมีโค้ดเฟนซ์ (```json) และแบบเปล่า
+// ใช้การจับคู่ปีกกาโดยข้ามอักขระที่อยู่ในสตริง คืน {json,start,end} หรือ null
+function findActionJson(raw) {
+  const key = raw.indexOf('"action"');
+  if (key < 0) return null;
+  const start = raw.lastIndexOf('{', key);
+  if (start < 0) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < raw.length; i++) {
+    const c = raw[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return { json: raw.slice(start, i + 1), start, end: i + 1 }; }
+  }
+  return null;
 }
 function extractAction(raw) {
-  const m = raw.match(/```json\s*([\s\S]*?)```/);
-  if (!m) return null;
-  try { const o = JSON.parse(m[1].trim()); if (o && typeof o === 'object' && o.action) return o; } catch (e) {}
+  const f = findActionJson(raw);
+  if (!f) return null;
+  try { const o = JSON.parse(f.json); if (o && typeof o === 'object' && o.action) return o; } catch (e) {}
   return null;
+}
+function stripAction(raw) {
+  // 1) ตัดบล็อกโค้ด json ที่ปิดครบก่อน
+  let out = raw.replace(/```json\s*[\s\S]*?```/gi, '');
+  // 2) ตัด action JSON ที่ไม่ได้อยู่ในเฟนซ์ (เช่นโมเดลส่งมาเป็นข้อความเปล่า)
+  const f = findActionJson(out);
+  if (f) out = out.slice(0, f.start) + out.slice(f.end);
+  // 3) เก็บกวาดเฟนซ์ว่าง/ค้าง (unclosed) ที่อาจหลงเหลือ
+  out = out.replace(/```[a-z]*\s*```/gi, '').replace(/```[\s\S]*$/, '').replace(/```/g, '');
+  return out.trim();
 }
 
 /* ---------- UI ---------- */
