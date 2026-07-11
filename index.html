@@ -71,6 +71,43 @@
   .scroll-x::-webkit-scrollbar-thumb { background:var(--sep); border-radius:3px; }
   /* drag area */
   .drag-active { background:var(--accent-tint) !important; border-color:var(--accent) !important; }
+
+  /* ===== จัดตำแหน่งการ์ด (drag-to-reorder) ===== */
+  [data-card] { position: relative; }
+  /* ปุ่มลากย้าย — ซ่อนไว้จนกว่าจะเข้าโหมดจัดตำแหน่ง */
+  .card-drag-handle {
+    position: absolute; top: 8px; right: 8px; z-index: 25;
+    width: 30px; height: 30px; border-radius: 999px;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(0,122,255,.12); color: var(--accent);
+    font-size: 15px; line-height: 1; cursor: grab; user-select: none;
+    box-shadow: inset 0 0 0 1px var(--sep); touch-action: none;
+  }
+  .card-drag-handle:active { cursor: grabbing; }
+  #app.layout-editing .card-drag-handle { display: flex; }
+  #app.layout-editing [data-card] {
+    outline: 2px dashed rgba(0,122,255,.35); outline-offset: 3px; border-radius: 18px;
+    transition: outline-color .15s;
+  }
+  #app.layout-editing [data-card]:hover { outline-color: rgba(0,122,255,.6); }
+  /* การ์ดที่กำลังถูกลาก */
+  .card-dragging { opacity: .9; box-shadow: 0 18px 40px rgba(0,0,0,.22) !important; cursor: grabbing; }
+  /* ช่องว่างที่แทนตำแหน่งเดิมระหว่างลาก */
+  .card-placeholder {
+    border: 2px dashed var(--accent); border-radius: 18px;
+    background: var(--accent-tint); margin-bottom: 1.5rem;
+  }
+  /* แถบเครื่องมือลอยด้านล่างเมื่ออยู่ในโหมดจัดตำแหน่ง */
+  #layoutToolbar {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    z-index: 60; display: none; align-items: center; gap: .6rem; flex-wrap: wrap;
+    max-width: calc(100vw - 24px);
+    background: rgba(255,255,255,.96); backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-radius: 999px; padding: .5rem .7rem .5rem 1rem;
+    box-shadow: 0 8px 30px rgba(0,0,0,.18), inset 0 0 0 1px var(--sep);
+  }
+  #layoutToolbar.show { display: flex; }
   /* sticky filter — frosted glass */
   .sticky-filter {
     backdrop-filter: saturate(180%) blur(20px);
@@ -260,6 +297,7 @@
           <input type="file" id="fileInput" accept=".csv" class="hidden" />
         </label>
         <button id="reloadBtn" class="btn-tint hidden">🔄 โหลดใหม่</button>
+        <button id="layoutBtn" class="btn-tint hidden">⇅ <span>จัดตำแหน่ง</span></button>
         <button id="shareBtn" class="btn-tint hidden">🔗 <span>แชร์ลิงก์</span></button>
       </div>
     </div>
@@ -330,10 +368,10 @@
   </section>
 
   <!-- KPI Cards -->
-  <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6" id="kpiGrid"></section>
+  <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6" id="kpiGrid" data-card="kpi" data-card-label="ตัวชี้วัด (KPI)"></section>
 
   <!-- Trend Chart -->
-  <section class="card p-5 mb-6">
+  <section class="card p-5 mb-6" data-card="trend" data-card-label="แนวโน้มรายเดือน">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
       <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">📈 แนวโน้มรายเดือน</h2><i class="info-btn" data-tip="แสดงรายรับ รายจ่าย ออม/ลงทุน และยอดสุทธิแต่ละเดือน (สุทธิ = รายรับ − รายจ่าย − ออม/ลงทุน) เส้นประ = ค่าเฉลี่ยเคลื่อนที่ 3 เดือน ใช้ดูทิศทางการเงินโดยรวมว่าดีขึ้นหรือแย่ลง">i</i></div>
       <div class="text-xs text-slate-500">สุทธิ = รายรับ − รายจ่าย − ออม/ลงทุน · เส้นประ = ค่าเฉลี่ยเคลื่อนที่ 3 เดือน</div>
@@ -342,7 +380,7 @@
   </section>
 
   <!-- Category + Top -->
-  <section class="grid lg:grid-cols-2 gap-6 mb-6">
+  <section class="grid lg:grid-cols-2 gap-6 mb-6" data-card="category-top" data-card-label="สัดส่วน & Top หมวด">
     <div class="card p-5">
       <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🍩 สัดส่วนรายจ่ายตามหมวด</h2><i class="info-btn" data-tip="แสดงสัดส่วน (%) ของรายจ่ายในแต่ละหมวด ช่วยบอกว่าเงินส่วนใหญ่หายไปอยู่ที่หมวดไหน คลิ๊กที่ legend เพื่อซ่อน/แสดงหมวด">i</i></div>
       <div class="relative h-80"><canvas id="catDoughnut"></canvas></div>
@@ -355,7 +393,7 @@
   </section>
 
   <!-- Category Detail Drill-down -->
-  <section id="catDetailSection" class="card p-5 mb-6 hidden">
+  <section id="catDetailSection" class="card p-5 mb-6 hidden" data-card="cat-detail" data-card-label="รายละเอียดหมวด (Drill-down)">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
       <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">📊 <span id="catDetailTitle">หมวด</span> — รายจ่ายรายเดือน & พยากรณ์</h2><i class="info-btn" data-tip="กราฟเส้นรายจ่ายรายเดือนของหมวดที่เลือก เส้นประสีเหลือง = พยากรณ์ 3 เดือน (Linear Regression) แถบสีจาง = ช่วงความเชื่อมั่น ±1σ">i</i></div>
       <button id="catDetailClose" class="text-sm text-slate-400 hover:text-slate-700 px-3 py-1 rounded border border-slate-200 hover:border-slate-400 transition">✕ ปิด</button>
@@ -365,7 +403,7 @@
   </section>
 
   <!-- Account + DoW -->
-  <section class="grid lg:grid-cols-2 gap-6 mb-6">
+  <section class="grid lg:grid-cols-2 gap-6 mb-6" data-card="account-dow" data-card-label="รายจ่ายตามบัญชี & สัปดาห์">
     <div class="card p-5">
       <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🏦 รายจ่ายแยกตามบัญชี</h2><i class="info-btn" data-tip="รวมรายจ่ายแยกตามบัญชีธนาคาร ช่วยดูว่าบัญชีไหนถูกใช้จ่ายมากที่สุดในช่วงเวลาที่เลือก">i</i></div>
       <div class="relative h-72"><canvas id="accountBar"></canvas></div>
@@ -377,7 +415,7 @@
   </section>
 
   <!-- Income Source Analysis -->
-  <section class="card p-5 mb-6">
+  <section class="card p-5 mb-6" data-card="income" data-card-label="วิเคราะห์แหล่งรายรับ">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
       <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">💚 วิเคราะห์แหล่งที่มาของรายรับ</h2><i class="info-btn" data-tip="วิเคราะห์รายรับทั้งหมดแยกตามหมวด บัญชี และเดือน ดูว่ารายได้มาจากแหล่งใดและมีความหลากหลายเพียงพอหรือไม่ คลิ๊กที่แถวในตารางเพื่อดูกราฟรายเดือน">i</i></div>
       <div class="text-xs text-slate-500">นับเฉพาะรายการที่เป็นรายรับ (amount &gt; 0) — ไม่รวมหมวดออม/ลงทุน รับค่าชำระบัตรเครดิต และการโอนเงินภายใน</div>
@@ -410,7 +448,7 @@
   </section>
 
   <!-- Expense Source Analysis -->
-  <section class="card p-5 mb-6">
+  <section class="card p-5 mb-6" data-card="expense" data-card-label="วิเคราะห์แหล่งรายจ่าย">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
       <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">❤️ วิเคราะห์แหล่งที่มาของรายจ่าย</h2><i class="info-btn" data-tip="วิเคราะห์รายจ่ายทั้งหมดแยกตามหมวด บัญชี และเดือน ดูว่าเงินออกจากแหล่งใดมากที่สุด คลิ๊กที่แถวในตารางเพื่อดูกราฟรายเดือน">i</i></div>
       <div class="text-xs text-slate-500">นับเฉพาะรายการที่เป็นรายจ่าย (amount &lt; 0) — ไม่รวมหมวดออม/ลงทุน และการโอนเงินภายใน</div>
@@ -443,7 +481,7 @@
   </section>
 
   <!-- Savings / Investment Tracker -->
-  <section class="card p-5 mb-6">
+  <section class="card p-5 mb-6" data-card="savings" data-card-label="ติดตามการออม/ลงทุน">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
       <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">💎 ติดตามการออม / ลงทุนสะสม</h2><i class="info-btn" data-tip="ติดตามเงินที่โอนเข้าหมวดออม/ลงทุน กราฟเส้นแสดงยอดสะสมสุทธิ (ฝากออก − รับกลับ) ใช้ดูความก้าวหน้าในการออมเงิน">i</i></div>
       <div class="text-xs text-slate-500">นับเฉพาะหมวดที่กำหนดเป็น "เก็บออม/ลงทุน" — ไม่ถือเป็นค่าใช้จ่าย</div>
@@ -454,7 +492,7 @@
   </section>
 
   <!-- Forecast & Burn rate -->
-  <section class="grid lg:grid-cols-3 gap-6 mb-6">
+  <section class="grid lg:grid-cols-3 gap-6 mb-6" data-card="forecast" data-card-label="พยากรณ์ & Burn rate">
     <div class="card p-5 lg:col-span-2">
       <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🔮 พยากรณ์กระแสเงินสด (3 เดือนข้างหน้า)</h2><i class="info-btn" data-tip="ใช้ Linear Regression จากสุทธิรายเดือนหลังหักออม/ลงทุน (ไม่รวมโอนภายใน รายการบัตรเครดิต และเดือนปัจจุบันที่ยังไม่สิ้นสุด) พยากรณ์ 3 เดือนข้างหน้า เส้นประสีเหลือง = พยากรณ์ แถบสี = ช่วงความเชื่อมั่น ±1σ R² ยิ่งใกล้ 1 ยิ่งเชื่อถือได้">i</i></div>
       <div class="relative h-72"><canvas id="forecastChart"></canvas></div>
@@ -467,7 +505,7 @@
   </section>
 
   <!-- MoM Table -->
-  <section class="card p-5 mb-6">
+  <section class="card p-5 mb-6" data-card="mom" data-card-label="เปรียบเทียบ Month-over-Month">
     <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">📊 เปรียบเทียบ Month-over-Month (รายจ่าย)</h2><i class="info-btn" data-tip="เปรียบเทียบรายจ่ายแต่ละหมวดระหว่าง 6 เดือนล่าสุด ตัวเลขแดง = ใช้จ่ายเพิ่มขึ้น ตัวเลขเขียว = ลดลง ใช้จับสัญญาณหมวดที่ค่าใช้จ่ายกำลังพุ่งสูงขึ้น">i</i></div>
     <div class="overflow-x-auto">
       <table class="tbl w-full text-sm" id="momTable"></table>
@@ -475,7 +513,7 @@
   </section>
 
   <!-- Events -->
-  <section class="card p-5 mb-6">
+  <section class="card p-5 mb-6" data-card="events" data-card-label="วิเคราะห์ Event">
     <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🎉 วิเคราะห์ Event</h2><i class="info-btn" data-tip="รวบรวมรายจ่ายที่ติด Event Tag เดียวกัน ช่วยดูต้นทุนรวมของแต่ละกิจกรรมหรือเหตุการณ์ เช่น ทริปเที่ยว งานแต่งงาน เทศกาล">i</i></div>
     <div class="overflow-x-auto">
       <table class="tbl w-full text-sm" id="eventTable"></table>
@@ -483,13 +521,13 @@
   </section>
 
   <!-- Insights -->
-  <section class="card p-5 mb-6" style="background:linear-gradient(135deg,#f0f6ff 0%,#ffffff 55%)">
+  <section class="card p-5 mb-6" data-card="insights" data-card-label="Insights อัตโนมัติ" style="background:linear-gradient(135deg,#f0f6ff 0%,#ffffff 55%)">
     <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">💡 Insights อัตโนมัติ</h2><i class="info-btn" data-tip="ระบบตรวจจับรูปแบบอัตโนมัติ เช่น หมวดที่ค่าใช้จ่ายพุ่งขึ้นผิดปกติ เดือนที่ใช้จ่ายสูงสุด หรือวันในสัปดาห์ที่มักจ่ายมากที่สุด">i</i></div>
     <ul id="insightsList" class="space-y-2 text-sm"></ul>
   </section>
 
   <!-- Transactions -->
-  <section class="card p-5 mb-6">
+  <section class="card p-5 mb-6" data-card="transactions" data-card-label="รายการธุรกรรม">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
       <h2 class="text-lg font-semibold">📋 รายการธุรกรรม</h2>
       <div class="flex gap-2 flex-wrap">
@@ -514,6 +552,13 @@
     Money Lover Analytics · ประมวลผลในเบราว์เซอร์เท่านั้น · ข้อมูลไม่ถูกส่งออกนอกเครื่อง
   </footer>
 </main>
+
+<!-- แถบเครื่องมือขณะจัดตำแหน่งการ์ด -->
+<div id="layoutToolbar">
+  <span class="text-sm" style="color:var(--ink2)">⇅ ลากปุ่มมุมขวาบนของการ์ดเพื่อสลับตำแหน่ง</span>
+  <button id="layoutResetBtn" class="chip" style="padding:.35rem .8rem">↺ รีเซ็ตค่าเริ่มต้น</button>
+  <button id="layoutDoneBtn" class="btn-solid" style="padding:.42rem 1rem;font-size:.8rem">เสร็จสิ้น</button>
+</div>
 
 <!-- ========== AI CHAT ========== -->
 <button id="chatFab" class="hidden" title="เลขาผู้ช่วยวิเคราะห์">💬</button>
@@ -769,6 +814,11 @@ async function loadFromCloud() {
       return null;
     }
     const meta = metaSnap.data() || {};
+    // ตำแหน่งการ์ดจากคลาวด์มาก่อน (ให้ตามข้ามอุปกรณ์) แล้วซิงค์ลง localStorage
+    if (Array.isArray(meta.layoutOrder) && meta.layoutOrder.length) {
+      applyCardOrder(meta.layoutOrder);
+      saveLocalCardOrder(meta.layoutOrder);
+    }
     const chunksSnap = await wsRef.collection('chunks')
       .orderBy(firebase.firestore.FieldPath.documentId())
       .get();
@@ -2493,12 +2543,15 @@ function refresh() {
   renderInsights();
   state.txnPage = 1;
   renderTxnTable();
+  // การ์ดบางใบ (เช่น KPI) ถูกเขียน innerHTML ใหม่ — เติมปุ่มลากย้ายกลับเข้าไป
+  if (typeof ensureCardHandles === 'function') ensureCardHandles();
 }
 
 function onDataLoaded() {
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('reloadBtn').classList.remove('hidden');
+  document.getElementById('layoutBtn').classList.remove('hidden');
   document.getElementById('chatFab').classList.remove('hidden');
 
   const min = new Date(Math.min(...state.rows.map(r => r.date.getTime())));
@@ -3065,6 +3118,154 @@ document.getElementById('exportCsv').addEventListener('click', exportFiltered);
 document.getElementById('prevPage').addEventListener('click', () => { if (state.txnPage > 1) { state.txnPage--; renderTxnTable(); } });
 document.getElementById('nextPage').addEventListener('click', () => { state.txnPage++; renderTxnTable(); });
 document.getElementById('shareBtn').addEventListener('click', copyShareLink);
+
+/* =========================================================
+ *  CARD LAYOUT — ลากจัดตำแหน่งการ์ดเอง + จำ/ซิงค์ตำแหน่ง
+ *  เก็บลำดับใน localStorage ('cardOrder') และซิงค์ขึ้น Firestore
+ *  (workspace.layoutOrder) เพื่อให้ตำแหน่งตามไปทุกอุปกรณ์
+ * ========================================================= */
+const LAYOUT_KEY = 'cardOrder';
+let DEFAULT_CARD_ORDER = [];
+let cardDrag = null;
+
+function layoutApp()   { return document.getElementById('app'); }
+function layoutCards() { return Array.from(layoutApp().querySelectorAll(':scope > [data-card]')); }
+function currentCardOrder() { return layoutCards().map(c => c.dataset.card); }
+
+function loadLocalCardOrder() {
+  try { const o = JSON.parse(localStorage.getItem(LAYOUT_KEY)); if (Array.isArray(o)) return o; } catch (e) {}
+  return null;
+}
+function saveLocalCardOrder(order) {
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(order)); } catch (e) {}
+}
+
+/* จัดเรียง DOM ให้ตรงกับลำดับที่กำหนด — การ์ดที่ไม่อยู่ในลำดับ (เช่นเพิ่มใหม่ภายหลัง)
+   จะถูกต่อท้ายตามลำดับเริ่มต้น */
+function applyCardOrder(order) {
+  const app = layoutApp();
+  const anchor = app.querySelector(':scope > footer');
+  const byId = new Map(layoutCards().map(c => [c.dataset.card, c]));
+  const seen = new Set();
+  const seq = [];
+  (order || []).forEach(id => { if (byId.has(id) && !seen.has(id)) { seq.push(byId.get(id)); seen.add(id); } });
+  DEFAULT_CARD_ORDER.forEach(id => { if (byId.has(id) && !seen.has(id)) { seq.push(byId.get(id)); seen.add(id); } });
+  seq.forEach(el => app.insertBefore(el, anchor));
+}
+
+function persistCardOrder() {
+  const order = currentCardOrder();
+  saveLocalCardOrder(order);
+  saveLayoutToCloud(order);
+}
+
+async function saveLayoutToCloud(order) {
+  if (!cloud.ready) return;
+  try {
+    await cloud.db.collection('workspaces').doc(cloud.wsId).set({
+      layoutOrder: order,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  } catch (e) { console.error('saveLayoutToCloud failed:', e); }
+}
+
+/* ---------- โหมดจัดตำแหน่ง ---------- */
+function toggleLayoutEdit(on) {
+  const app = layoutApp();
+  const editing = (on === undefined) ? !app.classList.contains('layout-editing') : on;
+  app.classList.toggle('layout-editing', editing);
+  document.getElementById('layoutToolbar').classList.toggle('show', editing);
+  const btn = document.getElementById('layoutBtn');
+  btn.querySelector('span').textContent = editing ? 'กำลังจัด…' : 'จัดตำแหน่ง';
+}
+
+/* ---------- ลากด้วย Pointer Events (รองรับทั้งเมาส์และทัช) ---------- */
+function addDragHandle(card) {
+  if (card.querySelector(':scope > .card-drag-handle')) return;
+  const h = document.createElement('div');
+  h.className = 'card-drag-handle';
+  h.title = 'ลากเพื่อย้ายตำแหน่ง';
+  h.textContent = '⠿';
+  h.addEventListener('pointerdown', e => startCardDrag(e, card, h));
+  card.appendChild(h);
+}
+
+function startCardDrag(e, card, handle) {
+  if (!layoutApp().classList.contains('layout-editing')) return;
+  e.preventDefault();
+  const app = layoutApp();
+  const rect = card.getBoundingClientRect();
+  const placeholder = document.createElement('div');
+  placeholder.className = 'card-placeholder';
+  placeholder.style.height = rect.height + 'px';
+  card.parentNode.insertBefore(placeholder, card);
+  card.classList.add('card-dragging');
+  card.style.position = 'fixed';
+  card.style.zIndex = '70';
+  card.style.width = rect.width + 'px';
+  card.style.left = rect.left + 'px';
+  card.style.top = rect.top + 'px';
+  card.style.margin = '0';
+  card.style.pointerEvents = 'none';
+  cardDrag = { card, handle, placeholder, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
+  try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+  handle.addEventListener('pointermove', onCardDragMove);
+  handle.addEventListener('pointerup', endCardDrag);
+  handle.addEventListener('pointercancel', endCardDrag);
+}
+
+function onCardDragMove(e) {
+  if (!cardDrag) return;
+  const app = layoutApp();
+  cardDrag.card.style.left = (e.clientX - cardDrag.offsetX) + 'px';
+  cardDrag.card.style.top  = (e.clientY - cardDrag.offsetY) + 'px';
+  const others = layoutCards().filter(c => c !== cardDrag.card);
+  let target = null;
+  for (const c of others) {
+    const r = c.getBoundingClientRect();
+    if (e.clientY < r.top + r.height / 2) { target = c; break; }
+  }
+  app.insertBefore(cardDrag.placeholder, target || app.querySelector(':scope > footer'));
+  // เลื่อนหน้าจออัตโนมัติเมื่อลากใกล้ขอบบน/ล่าง
+  const edge = 90;
+  if (e.clientY < edge) window.scrollBy(0, -12);
+  else if (e.clientY > window.innerHeight - edge) window.scrollBy(0, 12);
+}
+
+function endCardDrag(e) {
+  if (!cardDrag) return;
+  const { card, placeholder, handle } = cardDrag;
+  layoutApp().insertBefore(card, placeholder);
+  placeholder.remove();
+  card.classList.remove('card-dragging');
+  ['position', 'z-index', 'width', 'left', 'top', 'margin', 'pointer-events']
+    .forEach(p => card.style.removeProperty(p));
+  handle.removeEventListener('pointermove', onCardDragMove);
+  handle.removeEventListener('pointerup', endCardDrag);
+  handle.removeEventListener('pointercancel', endCardDrag);
+  try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+  cardDrag = null;
+  persistCardOrder();
+}
+
+/* เติมปุ่มลากย้ายให้ครบทุกการ์ด (เรียกซ้ำได้ — กันปุ่มหายเมื่อ innerHTML ถูกเขียนใหม่) */
+function ensureCardHandles() {
+  layoutCards().forEach(addDragHandle);
+}
+
+function initLayout() {
+  DEFAULT_CARD_ORDER = currentCardOrder();
+  const local = loadLocalCardOrder();
+  if (local) applyCardOrder(local);
+  ensureCardHandles();
+  document.getElementById('layoutBtn').addEventListener('click', () => toggleLayoutEdit());
+  document.getElementById('layoutDoneBtn').addEventListener('click', () => toggleLayoutEdit(false));
+  document.getElementById('layoutResetBtn').addEventListener('click', () => {
+    applyCardOrder(DEFAULT_CARD_ORDER);
+    persistCardOrder();
+  });
+}
+initLayout();
 
 /* =========================================================
  *  BOOTSTRAP — try to restore from cloud on page load
