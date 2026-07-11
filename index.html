@@ -184,6 +184,20 @@
     font-family:inherit; font-size:.85rem;
   }
   .chat-inputrow .btn-solid { flex:none; }
+  .chat-quick {
+    display:flex; gap:.4rem; padding:.55rem .8rem .1rem; overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .chat-quick::-webkit-scrollbar { display:none; }
+  .chat-quick.hidden { display:none; }
+  .chat-quick-btn {
+    flex:none; border-radius:999px; padding:.34rem .8rem; font-size:.75rem; font-weight:500;
+    color: var(--ink2); background: var(--fill); border:none; cursor:pointer;
+    white-space:nowrap; transition: background .15s, color .15s;
+  }
+  .chat-quick-btn:hover { background: var(--fill-2); }
+  .chat-quick-btn:active { transform:scale(.96); }
+  .chat-quick-btn:disabled { opacity:.5; cursor:default; }
   .chat-settings { padding:.9rem 1rem; border-bottom:1px solid var(--sep); background:#FAFAFC; font-size:.8rem; }
   #aiConsentModal {
     position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.4);
@@ -559,6 +573,7 @@
   </div>
 
   <div id="chatMsgs" class="chat-msgs"></div>
+  <div id="chatQuick" class="chat-quick hidden"></div>
   <div class="chat-inputrow">
     <textarea id="chatInput" class="field flex-1" rows="1" placeholder="ถามเรื่องการเงินของคุณ... (Enter ส่ง · Shift+Enter ขึ้นบรรทัดใหม่)"></textarea>
     <button id="chatSend" class="btn-solid" style="padding:.45rem .95rem">➤</button>
@@ -2733,8 +2748,35 @@ function chatAddMsg(role, text, opts = {}) {
 
 function chatUpdateModeLabel() {
   const el = document.getElementById('chatModeLabel');
+  chatRenderQuick();
   if (!aiEnabled()) { el.textContent = aiCfg.mode === 'proxy' ? 'ยังไม่ตั้ง Proxy — กด ⚙️ เพื่อใส่ Proxy URL' : 'ยังไม่เชื่อม AI — กด ⚙️ เพื่อเชื่อม Gemini (ฟรี)'; return; }
   el.textContent = (aiCfg.mode === 'proxy' ? '🌐 Proxy · ' : '☁️ ') + aiCfg.model + ' — ส่งเฉพาะข้อมูลสรุปปิดบังตัวตน';
+}
+
+/* ---------- ปุ่มด่วน (quick-action) สำหรับถาม AI โดยไม่ต้องพิมพ์ ---------- */
+const CHAT_QUICK_ACTIONS = [
+  { label: '📊 สรุปเดือนนี้',     q: 'สรุปภาพรวมการเงินเดือนนี้ให้หน่อย รายรับ รายจ่าย และเงินคงเหลือ' },
+  { label: '🍔 หมวดไหนใช้เยอะ',   q: 'หมวดไหนที่ฉันใช้จ่ายเยอะที่สุด และคิดเป็นสัดส่วนเท่าไหร่' },
+  { label: '⚠️ รายการผิดปกติ',    q: 'มีเดือนหรือรายการไหนที่ใช้จ่ายผิดปกติบ้าง' },
+  { label: '💡 วิธีประหยัด',       q: 'ช่วยแนะนำวิธีลดรายจ่ายจากข้อมูลของฉัน' },
+  { label: '📈 แนวโน้มรายจ่าย',    q: 'แนวโน้มการใช้จ่ายของฉันเป็นยังไง เพิ่มขึ้นหรือลดลง' },
+  { label: '🔁 รายจ่ายประจำ',      q: 'ฉันมีรายจ่ายประจำหรือค่าสมาชิกรายเดือนอะไรบ้าง' },
+  { label: '💰 แนะนำงบประมาณ',    q: 'ช่วยแนะนำงบประมาณรายเดือนที่เหมาะกับพฤติกรรมการใช้เงินของฉัน' },
+  { label: '🎯 อยากเก็บเงิน',      q: 'ถ้าฉันอยากเก็บเงินให้ได้มากขึ้น ควรตัดรายจ่ายส่วนไหน' },
+];
+
+function chatRenderQuick() {
+  const wrap = document.getElementById('chatQuick');
+  if (!wrap) return;
+  if (!aiEnabled()) { wrap.classList.add('hidden'); wrap.innerHTML = ''; return; }
+  wrap.classList.remove('hidden');
+  if (wrap.childElementCount) return;   // สร้างครั้งเดียวพอ
+  CHAT_QUICK_ACTIONS.forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'chat-quick-btn'; b.type = 'button'; b.textContent = a.label;
+    b.onclick = () => { if (chatState.busy) return; chatSend(a.q); };
+    wrap.appendChild(b);
+  });
 }
 
 /* ---------- การ์ดตัวเลือกโต้ตอบ (AI ถามกลับ + ปุ่มเลือก + ช่องพิมพ์เอง) ---------- */
