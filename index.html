@@ -1209,23 +1209,70 @@ function movingAverage(values, n = 3) {
   return out;
 }
 
-function linearRegression(ys) {
+/* Robust + Damped forecast (Holt's damped linear trend)
+ * ปรับปรุงจาก linear regression ธรรมดา 3 อย่าง:
+ *   1) Robust: clamp ค่า outlier (median ± 2·IQR) ก่อนคำนวณ
+ *      → รายการก้อนใหญ่ผิดปกติ (ประกันรายปี ฯลฯ) ไม่ทำให้เทรนด์เอียงทั้งเส้น
+ *   2) Exponential smoothing: เดือนล่าสุดมีน้ำหนักมากกว่าเดือนเก่า
+ *   3) Damped trend (φ): หน่วงความชัน ไม่ extrapolate สุดโต่งเมื่อพยากรณ์หลายเดือน
+ * คืนค่า forecast(h) = ค่าพยากรณ์ h เดือนข้างหน้า (h = 1,2,3), slope, rSquared, std
+ */
+function robustForecast(ys, opts = {}) {
+  const alpha = opts.alpha ?? 0.5;   // น้ำหนักปรับระดับ (level)
+  const beta  = opts.beta  ?? 0.3;   // น้ำหนักปรับแนวโน้ม (trend)
+  const phi   = opts.phi   ?? 0.9;   // สัมประสิทธิ์การหน่วง (damping)
   const n = ys.length;
-  if (n < 2) return { slope: 0, intercept: ys[0] || 0, rSquared: 0 };
-  let sx = 0, sy = 0, sxy = 0, sxx = 0;
-  for (let i = 0; i < n; i++) { sx += i; sy += ys[i]; sxy += i * ys[i]; sxx += i * i; }
-  const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
-  const intercept = (sy - slope * sx) / n;
-  let ssRes = 0, ssTot = 0;
-  const meanY = sy / n;
-  for (let i = 0; i < n; i++) {
-    const yhat = slope * i + intercept;
-    ssRes += (ys[i] - yhat) ** 2;
-    ssTot += (ys[i] - meanY) ** 2;
+  if (n < 2) {
+    const v = ys[0] || 0;
+    return { forecast: () => v, slope: 0, level: v, rSquared: 0, std: 0, clamped: 0 };
   }
-  const rSquared = ssTot === 0 ? 0 : 1 - ssRes / ssTot;
+
+  // --- 1) Robust: clamp outlier ด้วย median ± 2·IQR ---
+  const sorted = [...ys].sort((a, b) => a - b);
+  const quantile = p => {
+    const idx = (sorted.length - 1) * p;
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  };
+  const median = quantile(0.5);
+  const iqr = quantile(0.75) - quantile(0.25);
+  const loBound = median - 2 * iqr, hiBound = median + 2 * iqr;
+  let clamped = 0;
+  const clean = ys.map(y => {
+    if (iqr > 0 && (y < loBound || y > hiBound)) { clamped++; return Math.min(hiBound, Math.max(loBound, y)); }
+    return y;
+  });
+
+  // --- 2) Holt's damped trend (exponential smoothing) ---
+  let level = clean[0];
+  let trend = clean[1] - clean[0];
+  const fitted = [clean[0]];         // one-step-ahead forecast ในตัวอย่าง (ไว้วัดความแม่น)
+  for (let i = 1; i < n; i++) {
+    fitted.push(level + phi * trend);
+    const prevLevel = level;
+    level = alpha * clean[i] + (1 - alpha) * (level + phi * trend);
+    trend = beta * (level - prevLevel) + (1 - beta) * phi * trend;
+  }
+
+  // --- 3) วัดความแม่น (R², std) จาก one-step forecast ---
+  let ssRes = 0, ssTot = 0;
+  const meanY = clean.reduce((a, b) => a + b, 0) / n;
+  for (let i = 1; i < n; i++) {      // ข้าม i=0 (ยังไม่มีค่าพยากรณ์จริง)
+    ssRes += (clean[i] - fitted[i]) ** 2;
+    ssTot += (clean[i] - meanY) ** 2;
+  }
+  const rSquared = ssTot === 0 ? 0 : Math.max(0, 1 - ssRes / ssTot);
   const std = Math.sqrt(ssRes / Math.max(1, n - 2));
-  return { slope, intercept, rSquared, std };
+
+  // พยากรณ์แบบหน่วง: ŷ(h) = level + (φ + φ² + … + φ^h)·trend
+  const forecast = h => {
+    let damp = 0, p = phi;
+    for (let j = 0; j < h; j++) { damp += p; p *= phi; }
+    return level + damp * trend;
+  };
+
+  // slope ที่รายงาน = การเปลี่ยนแปลงคาดหวังของเดือนถัดไป (φ·trend)
+  return { forecast, slope: phi * trend, level, rSquared, std, clamped };
 }
 
 function nextMonthKey(key) {
@@ -1426,7 +1473,7 @@ function renderCategoryDetail(category) {
     return;
   }
 
-  const reg = linearRegression(expenses);
+  const reg = robustForecast(expenses);
   const futureKeys = [];
   let last = keys[keys.length - 1];
   for (let i = 0; i < 3; i++) { last = nextMonthKey(last); futureKeys.push(last); }
@@ -1438,8 +1485,7 @@ function renderCategoryDetail(category) {
   const futureMinus = Array(keys.length).fill(null);
 
   for (let i = 0; i < 3; i++) {
-    const x = keys.length + i;
-    const yhat = Math.max(0, reg.slope * x + reg.intercept);
+    const yhat = Math.max(0, reg.forecast(i + 1));   // h = 1,2,3 เดือนข้างหน้า
     futureData.push(yhat);
     futurePlus.push(Math.max(0, yhat + reg.std));
     futureMinus.push(Math.max(0, yhat - reg.std));
@@ -1464,11 +1510,12 @@ function renderCategoryDetail(category) {
 
   const avg = expenses.reduce((a, b) => a + b, 0) / expenses.length;
   const trend = reg.slope >= 0 ? 'เพิ่มขึ้น 📈' : 'ลดลง 📉';
-  const nextForecast = Math.max(0, reg.slope * keys.length + reg.intercept);
+  const nextForecast = Math.max(0, reg.forecast(1));
   document.getElementById('catDetailSummary').innerHTML =
     `ค่าเฉลี่ยต่อเดือน: <b>${fmtTHB.format(avg)}</b>  ·  ` +
     `แนวโน้ม: ${trend} (${fmtTHB.format(reg.slope)}/เดือน, R²=${reg.rSquared.toFixed(2)})  ·  ` +
     `คาดการณ์เดือนหน้า: <b>${fmtTHB.format(nextForecast)}</b>` +
+    (reg.clamped > 0 ? `  ·  <span class="text-slate-400">ปรับค่าผิดปกติ ${reg.clamped} เดือน</span>` : '') +
     '  ·  <span class="text-slate-400">รวมเดือนปัจจุบันในการคำนวณด้วย</span>';
 }
 
@@ -1943,7 +1990,7 @@ function renderForecast() {
     return;
   }
   const nets = keys.map(k => m.has(k) ? m.get(k).netAfterSavings : 0);
-  const reg = linearRegression(nets);
+  const reg = robustForecast(nets);
 
   const futureKeys = [];
   let last = keys[keys.length - 1];
@@ -1955,8 +2002,7 @@ function renderForecast() {
   const futurePlus = Array(keys.length).fill(null);
   const futureMinus = Array(keys.length).fill(null);
   for (let i = 0; i < 3; i++) {
-    const x = keys.length + i;
-    const yhat = reg.slope * x + reg.intercept;
+    const yhat = reg.forecast(i + 1);   // h = 1,2,3 เดือนข้างหน้า
     futureData.push(yhat);
     futurePlus.push(yhat + reg.std);
     futureMinus.push(yhat - reg.std);
@@ -1979,13 +2025,12 @@ function renderForecast() {
     options: chartOpts({ ySymbol: true })
   });
 
-  const totalForecast = (reg.slope * keys.length + reg.intercept) +
-                        (reg.slope * (keys.length + 1) + reg.intercept) +
-                        (reg.slope * (keys.length + 2) + reg.intercept);
+  const totalForecast = reg.forecast(1) + reg.forecast(2) + reg.forecast(3);
   const trend = reg.slope >= 0 ? 'เป็นบวก 📈' : 'เป็นลบ 📉';
   document.getElementById('forecastSummary').innerHTML =
     `แนวโน้มสุทธิ ${trend} (slope ≈ ${fmtTHB.format(reg.slope)}/เดือน, R² = ${reg.rSquared.toFixed(2)})  ·  ` +
     `รวม 3 เดือนข้างหน้าคาดว่า ${fmtTHB.format(totalForecast)}` +
+    (reg.clamped > 0 ? `  ·  <span class="text-slate-400">ปรับค่าผิดปกติ ${reg.clamped} เดือน</span>` : '') +
     '  ·  <span class="text-slate-400">รวมเดือนปัจจุบันในการคำนวณด้วย</span>';
 
   // Burn rate — ใช้ state.rows (ทุกบัญชี) ให้ฐานข้อมูลเดียวกับยอดเงินสดในมือด้านล่าง
