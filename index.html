@@ -1416,14 +1416,12 @@ function renderCategoryDetail(category) {
 
   const byMonth = groupCategoryByMonth(state.filtered, category);
   // เดือนที่ไม่มีรายจ่ายในหมวดนี้ = 0 จริงๆ ต้องนับด้วย ไม่งั้นแนวโน้มเอียงขึ้นเกินจริง
-  let keys = fillMonthGaps([...byMonth.keys()]);
-  // ตัดเดือนปัจจุบันที่ยังไม่สิ้นสุดออกจากการคำนวณแนวโน้ม
-  const droppedCurrentMonth = keys.length > 0 && keys[keys.length - 1] === currentMonthKey();
-  if (droppedCurrentMonth) keys = keys.slice(0, -1);
+  // รวมเดือนปัจจุบันเข้าในการคำนวณแนวโน้มด้วย
+  const keys = fillMonthGaps([...byMonth.keys()]);
   const expenses = keys.map(k => byMonth.get(k) || 0);
 
   if (keys.length < 2) {
-    document.getElementById('catDetailSummary').textContent = 'ข้อมูลไม่เพียงพอสำหรับการพยากรณ์ (ต้องมีอย่างน้อย 2 เดือนที่สิ้นสุดแล้ว)';
+    document.getElementById('catDetailSummary').textContent = 'ข้อมูลไม่เพียงพอสำหรับการพยากรณ์ (ต้องมีอย่างน้อย 2 เดือน)';
     renderChart('catDetail', document.getElementById('catDetailLine'), { type:'line', data:{ labels:[], datasets:[] }, options:{} });
     return;
   }
@@ -1471,7 +1469,7 @@ function renderCategoryDetail(category) {
     `ค่าเฉลี่ยต่อเดือน: <b>${fmtTHB.format(avg)}</b>  ·  ` +
     `แนวโน้ม: ${trend} (${fmtTHB.format(reg.slope)}/เดือน, R²=${reg.rSquared.toFixed(2)})  ·  ` +
     `คาดการณ์เดือนหน้า: <b>${fmtTHB.format(nextForecast)}</b>` +
-    (droppedCurrentMonth ? '  ·  <span class="text-slate-400">ไม่รวมเดือนปัจจุบันที่ยังไม่สิ้นสุด</span>' : '');
+    '  ·  <span class="text-slate-400">รวมเดือนปัจจุบันในการคำนวณด้วย</span>';
 }
 
 /* =========================================================
@@ -1936,14 +1934,12 @@ function renderExpenseCategoryDetail(category) {
  * ========================================================= */
 function renderForecast() {
   const m = groupByMonth(cashFlowRows(state.filtered));
-  // เติมเดือนที่ไม่มีรายการด้วยค่า 0 และตัดเดือนปัจจุบันที่ยังไม่สิ้นสุดออกจากแนวโน้ม
-  let keys = fillMonthGaps([...m.keys()]);
-  const droppedCurrentMonth = keys.length > 0 && keys[keys.length - 1] === currentMonthKey();
-  if (droppedCurrentMonth) keys = keys.slice(0, -1);
+  // เติมเดือนที่ไม่มีรายการด้วยค่า 0 — รวมเดือนปัจจุบันเข้าในการคำนวณแนวโน้มด้วย
+  const keys = fillMonthGaps([...m.keys()]);
 
   if (keys.length < 2) {
     renderChart('forecast', document.getElementById('forecastChart'), { type:'line', data:{ labels:[], datasets:[] }, options:{} });
-    document.getElementById('forecastSummary').textContent = 'ข้อมูลไม่พอสำหรับการพยากรณ์ (ต้องมีอย่างน้อย 2 เดือนที่สิ้นสุดแล้ว)';
+    document.getElementById('forecastSummary').textContent = 'ข้อมูลไม่พอสำหรับการพยากรณ์ (ต้องมีอย่างน้อย 2 เดือน)';
     return;
   }
   const nets = keys.map(k => m.has(k) ? m.get(k).netAfterSavings : 0);
@@ -1990,7 +1986,7 @@ function renderForecast() {
   document.getElementById('forecastSummary').innerHTML =
     `แนวโน้มสุทธิ ${trend} (slope ≈ ${fmtTHB.format(reg.slope)}/เดือน, R² = ${reg.rSquared.toFixed(2)})  ·  ` +
     `รวม 3 เดือนข้างหน้าคาดว่า ${fmtTHB.format(totalForecast)}` +
-    (droppedCurrentMonth ? '  ·  <span class="text-slate-400">ไม่รวมเดือนปัจจุบันที่ยังไม่สิ้นสุด</span>' : '');
+    '  ·  <span class="text-slate-400">รวมเดือนปัจจุบันในการคำนวณด้วย</span>';
 
   // Burn rate — ใช้ state.rows (ทุกบัญชี) ให้ฐานข้อมูลเดียวกับยอดเงินสดในมือด้านล่าง
   const recent30 = state.rows.filter(r => {
