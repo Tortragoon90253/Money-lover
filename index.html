@@ -2147,6 +2147,8 @@ function renderSavings() {
 /* =========================================================
  *  RENDER — MoM TABLE
  * ========================================================= */
+const MOM_MAX_ROWS = 25;
+
 function renderMoM() {
   const m = groupByMonth(state.filtered);
   const keys = [...m.keys()].slice(-6);
@@ -2169,14 +2171,21 @@ function renderMoM() {
   // %เปลี่ยน เทียบ 2 เดือนล่าสุดที่จบแล้ว — เดือนปัจจุบันยังไม่เต็มเดือน แสดงข้อมูลได้แต่ห้ามใช้เทียบ
   const curKey = currentMonthKey();
   const cmpKeys = keys.filter(k => k !== curKey);
-  const chgRank = (ch) => ch == null ? -1e9 : (isFinite(ch) ? ch : 1e9);
+  const lastKey = cmpKeys.length >= 1 ? cmpKeys[cmpKeys.length - 1] : null;
+  const prevKey = cmpKeys.length >= 2 ? cmpKeys[cmpKeys.length - 2] : null;
+  const sumAt = (rows, k) => k ? rows.reduce((s, r) => s + (r.vals[k] || 0), 0) : 0;
+
   const rowsArr = [...catMap.entries()].map(([cat, vals]) => {
-    const last = cmpKeys.length >= 1 ? (vals[cmpKeys[cmpKeys.length - 1]] || 0) : 0;
-    const prev = cmpKeys.length >= 2 ? (vals[cmpKeys[cmpKeys.length - 2]] || 0) : 0;
-    const change = cmpKeys.length < 2 ? null : (prev > 0 ? ((last - prev) / prev) * 100 : (last > 0 ? Infinity : 0));
-    return { cat, vals, last, prev, change };
-  }).filter(r => keys.some(k => (r.vals[k] || 0) > 0))
-    .sort((a, b) => chgRank(b.change) - chgRank(a.change));
+    const total = keys.reduce((s, k) => s + (vals[k] || 0), 0);
+    const last = lastKey ? (vals[lastKey] || 0) : 0;
+    const prev = prevKey ? (vals[prevKey] || 0) : 0;
+    return { cat, vals, total, change: pctChange(last, prev, !!prevKey) };
+  }).filter(r => r.total > 0)
+    // เรียงตามยอดเงิน ไม่ใช่ %เปลี่ยน — หมวดที่ใช้เงินเยอะแต่ยอดนิ่ง/ลดลง ต้องไม่ถูก MOM_MAX_ROWS ตัดทิ้ง
+    .sort((a, b) => b.total - a.total);
+
+  const shown  = rowsArr.slice(0, MOM_MAX_ROWS);
+  const hidden = rowsArr.slice(MOM_MAX_ROWS);
 
   // Monthly totals computed from the same data shown above (sum across all expense categories, savings excluded)
   const monthTotals = {};
@@ -2185,36 +2194,35 @@ function renderMoM() {
     for (const [, vals] of catMap) sum += (vals[k] || 0);
     monthTotals[k] = sum;
   }
-  const lastTotal = cmpKeys.length >= 1 ? (monthTotals[cmpKeys[cmpKeys.length - 1]] || 0) : 0;
-  const prevTotal = cmpKeys.length >= 2 ? (monthTotals[cmpKeys[cmpKeys.length - 2]] || 0) : 0;
-  const totalChange = cmpKeys.length < 2 ? null : (prevTotal > 0
-    ? ((lastTotal - prevTotal) / prevTotal) * 100
-    : (lastTotal > 0 ? Infinity : 0));
-  const totalCls = totalChange == null
-    ? 'text-slate-400'
-    : !isFinite(totalChange)
-      ? 'text-expense'
-      : (totalChange > 0 ? 'text-expense' : (totalChange < 0 ? 'text-income' : 'text-slate-500'));
-  const totalSym = totalChange == null
-    ? '-'
-    : !isFinite(totalChange)
-      ? '+∞'
-      : (totalChange >= 0 ? '+' : '') + totalChange.toFixed(0) + '%';
+  const totalChange = pctChange(
+    lastKey ? (monthTotals[lastKey] || 0) : 0,
+    prevKey ? (monthTotals[prevKey] || 0) : 0,
+    !!prevKey);
 
   let html = '<thead><tr class="text-left text-xs text-slate-500 border-b">';
   html += '<th class="py-2 pr-3">หมวด</th>';
   for (const k of keys) html += '<th class="py-2 px-2 text-right">' + monthLabel(k) + (k === curKey ? '<br><span class="font-normal text-slate-400">(บางส่วน)</span>' : '') + '</th>';
   html += '<th class="py-2 pl-2 text-right">%เปลี่ยน</th></tr></thead><tbody>';
-  for (const r of rowsArr.slice(0, 25)) {
+  for (const r of shown) {
     html += '<tr class="border-b border-slate-100">';
     html += '<td class="py-1.5 pr-3 font-medium">' + escapeHtml(r.cat) + '</td>';
     for (const k of keys) {
       const v = r.vals[k] || 0;
       html += '<td class="py-1.5 px-2 text-right tabular-nums">' + (v > 0 ? fmtNum.format(Math.round(v)) : '-') + '</td>';
     }
-    const cls = r.change == null ? 'text-slate-400' : !isFinite(r.change) ? 'text-expense' : (r.change >= 0 ? 'text-expense' : 'text-income');
-    const sym = r.change == null ? '-' : !isFinite(r.change) ? '+∞' : (r.change >= 0 ? '+' : '') + r.change.toFixed(0) + '%';
-    html += '<td class="py-1.5 pl-2 text-right font-semibold ' + cls + '">' + sym + '</td>';
+    html += '<td class="py-1.5 pl-2 text-right font-semibold ' + pctCellClass(r.change) + '">' + pctCellText(r.change) + '</td>';
+    html += '</tr>';
+  }
+  // รวบหมวดที่เกิน MOM_MAX_ROWS ไว้แถวเดียว — ยอดในตารางจะได้กระทบกับแถวรวมสุทธิเสมอ
+  if (hidden.length) {
+    const otherChange = pctChange(sumAt(hidden, lastKey), sumAt(hidden, prevKey), !!prevKey);
+    html += '<tr class="border-b border-slate-100 text-slate-500 italic">';
+    html += '<td class="py-1.5 pr-3">อื่นๆ (' + hidden.length + ' หมวด)</td>';
+    for (const k of keys) {
+      const v = sumAt(hidden, k);
+      html += '<td class="py-1.5 px-2 text-right tabular-nums">' + (v > 0 ? fmtNum.format(Math.round(v)) : '-') + '</td>';
+    }
+    html += '<td class="py-1.5 pl-2 text-right font-semibold ' + pctCellClass(otherChange) + '">' + pctCellText(otherChange) + '</td>';
     html += '</tr>';
   }
   html += '</tbody><tfoot><tr class="border-t-2 border-slate-300 font-bold bg-slate-50">';
@@ -2223,9 +2231,29 @@ function renderMoM() {
     const v = monthTotals[k] || 0;
     html += '<td class="py-2 px-2 text-right tabular-nums text-expense">' + (v > 0 ? fmtNum.format(Math.round(v)) : '-') + '</td>';
   }
-  html += '<td class="py-2 pl-2 text-right ' + totalCls + '">' + totalSym + '</td>';
+  html += '<td class="py-2 pl-2 text-right ' + pctCellClass(totalChange) + '">' + pctCellText(totalChange) + '</td>';
   html += '</tr></tfoot>';
   document.getElementById('momTable').innerHTML = html;
+}
+
+// %เปลี่ยนของรายจ่าย — comparable=false เมื่อยังไม่มี 2 เดือนที่จบแล้วให้เทียบ,
+// Infinity = เดือนก่อนไม่มียอดแต่เดือนล่าสุดมี (หมวดที่เพิ่งเริ่มจ่าย)
+function pctChange(last, prev, comparable) {
+  if (!comparable) return null;
+  if (prev > 0) return ((last - prev) / prev) * 100;
+  return last > 0 ? Infinity : 0;
+}
+
+function pctCellClass(ch) {
+  if (ch == null) return 'text-slate-400';
+  if (!isFinite(ch)) return 'text-expense';
+  return ch > 0 ? 'text-expense' : (ch < 0 ? 'text-income' : 'text-slate-500');
+}
+
+function pctCellText(ch) {
+  if (ch == null) return '-';
+  if (!isFinite(ch)) return 'ใหม่';
+  return (ch >= 0 ? '+' : '') + ch.toFixed(0) + '%';
 }
 
 function monthLabel(key) {
