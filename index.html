@@ -382,11 +382,14 @@
   <!-- Category + Top -->
   <section class="grid lg:grid-cols-2 gap-6 mb-6" data-card="category-top" data-card-label="สัดส่วน & Top หมวด">
     <div class="card p-5">
-      <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">🍩 สัดส่วนรายจ่ายตามหมวด</h2><i class="info-btn" data-tip="แสดงสัดส่วน (%) ของรายจ่ายในแต่ละหมวด ช่วยบอกว่าเงินส่วนใหญ่หายไปอยู่ที่หมวดไหน คลิ๊กที่ legend เพื่อซ่อน/แสดงหมวด">i</i></div>
+      <div class="flex items-center gap-1.5 mb-1"><h2 class="text-lg font-semibold">🍩 สัดส่วนรายจ่ายตามหมวด</h2><i class="info-btn" data-tip="แสดงสัดส่วน (%) ของรายจ่ายในแต่ละหมวด ช่วยบอกว่าเงินส่วนใหญ่หายไปอยู่ที่หมวดไหน คลิ๊กที่ legend หรือชิ้นในกราฟเพื่อกรองหมวดนั้นออก — ยอดรวมและ % จะคำนวณใหม่จากหมวดที่เหลือจริง">i</i></div>
+      <p class="text-xs text-slate-400 mb-2">คลิ๊กหมวดในกราฟเพื่อกรองออก · ตัวเลขจะคำนวณใหม่ตามหมวดที่เหลือ</p>
+      <div id="overviewHiddenBar" class="flex-wrap items-center gap-1.5 mb-2" style="display:none"></div>
       <div class="relative h-80"><canvas id="catDoughnut"></canvas></div>
+      <p id="catShareSummary" class="text-sm text-slate-600 mt-3"></p>
     </div>
     <div class="card p-5">
-      <div class="flex items-center gap-1.5 mb-1"><h2 class="text-lg font-semibold">🔝 Top 15 หมวดที่ใช้มากสุด</h2><i class="info-btn" data-tip="เรียงหมวดรายจ่ายจากมากไปน้อย 15 อันดับ คลิ๊กที่แถบเพื่อเปิดกราฟรายเดือนและพยากรณ์ค่าใช้จ่ายของหมวดนั้น">i</i></div>
+      <div class="flex items-center gap-1.5 mb-1"><h2 class="text-lg font-semibold">🔝 Top 15 หมวดที่ใช้มากสุด</h2><i class="info-btn" data-tip="เรียงหมวดรายจ่ายจากมากไปน้อย 15 อันดับ คลิ๊กที่แถบเพื่อเปิดกราฟรายเดือนและพยากรณ์ค่าใช้จ่ายของหมวดนั้น หมวดที่ถูกกรองออกจากกราฟสัดส่วนจะไม่ถูกนับที่นี่ด้วย">i</i></div>
       <p class="text-xs text-slate-400 mb-2">คลิ๊กที่แถบเพื่อดูรายละเอียดรายเดือน</p>
       <div class="relative h-80"><canvas id="topCatBar"></canvas></div>
     </div>
@@ -421,9 +424,10 @@
       <div class="text-xs text-slate-500">นับเฉพาะรายการที่เป็นรายรับ (amount &gt; 0) — ไม่รวมหมวดออม/ลงทุน รับค่าชำระบัตรเครดิต และการโอนเงินภายใน</div>
     </div>
     <div id="incomeKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+    <div id="incomeHiddenBar" class="flex-wrap items-center gap-1.5 mb-3" style="display:none"></div>
     <div class="grid lg:grid-cols-2 gap-6 mb-4">
       <div>
-        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">🍩 สัดส่วนรายรับตามหมวด</h3><i class="info-btn" data-tip="สัดส่วนรายรับแยกตามหมวด เปรียบเทียบว่าแหล่งรายได้ไหนมีสัดส่วนมากน้อยแค่ไหน">i</i></div>
+        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">🍩 สัดส่วนรายรับตามหมวด</h3><i class="info-btn" data-tip="สัดส่วนรายรับแยกตามหมวด เปรียบเทียบว่าแหล่งรายได้ไหนมีสัดส่วนมากน้อยแค่ไหน คลิ๊กที่ legend หรือชิ้นในกราฟเพื่อกรองหมวดนั้นออก — KPI ตาราง และ % ทั้งการ์ดจะคำนวณใหม่จากหมวดที่เหลือ">i</i></div>
         <div class="relative h-72"><canvas id="incomeCatDoughnut"></canvas></div>
       </div>
       <div>
@@ -454,9 +458,10 @@
       <div class="text-xs text-slate-500">นับเฉพาะรายการที่เป็นรายจ่าย (amount &lt; 0) — ไม่รวมหมวดออม/ลงทุน และการโอนเงินภายใน</div>
     </div>
     <div id="expenseSourceKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+    <div id="expenseHiddenBar" class="flex-wrap items-center gap-1.5 mb-3" style="display:none"></div>
     <div class="grid lg:grid-cols-2 gap-6 mb-4">
       <div>
-        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">🍩 สัดส่วนรายจ่ายตามหมวด</h3><i class="info-btn" data-tip="สัดส่วนรายจ่ายแยกตามหมวด เปรียบเทียบว่าหมวดใดกินงบมากที่สุด">i</i></div>
+        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">🍩 สัดส่วนรายจ่ายตามหมวด</h3><i class="info-btn" data-tip="สัดส่วนรายจ่ายแยกตามหมวด เปรียบเทียบว่าหมวดใดกินงบมากที่สุด คลิ๊กที่ legend หรือชิ้นในกราฟเพื่อกรองหมวดนั้นออก — KPI ตาราง และ % ทั้งการ์ดจะคำนวณใหม่จากหมวดที่เหลือ">i</i></div>
         <div class="relative h-72"><canvas id="expenseCatDoughnut"></canvas></div>
       </div>
       <div>
@@ -871,6 +876,8 @@ const state = {
   selectedCategory: null,
   selectedIncomeCategory: null,
   selectedExpenseCategory: null,
+  // หมวดที่ผู้ใช้คลิ๊กกรองออกจากกราฟ แยกตามการ์ด — ทุกตัวเลขในการ์ดนั้นคำนวณใหม่จากหมวดที่เหลือ
+  hiddenCats: { overview: new Set(), income: new Set(), expense: new Set() },
 };
 
 const INTERNAL_CATEGORIES = new Set(['โอนเงินเข้า','โอนเงินออก']);
@@ -1393,31 +1400,146 @@ function renderTrendChart() {
 }
 
 /* =========================================================
+ *  CATEGORY TOGGLE — คลิ๊กหมวดในกราฟเพื่อกรองออก
+ *  ซ่อนแล้วต้องคิดเลขใหม่ทั้งการ์ด (KPI / % / ตาราง / บรรทัดสรุป)
+ *  ไม่ใช่แค่ซ่อนรูป ไม่งั้นตัวเลขที่โชว์จะไม่ตรงกับกราฟที่เห็น
+ * ========================================================= */
+const OTHER_LABEL = 'อื่นๆ';
+const HIDDEN_CHIP_MAX = 8;
+
+// การ์ดไหนมีแผง drill-down ผูกอยู่ — ถ้าหมวดที่เปิดอยู่ถูกซ่อน ต้องปิดแผงตาม
+const SCOPE_DETAIL = {
+  overview: { sel: 'selectedCategory',        section: 'catDetailSection' },
+  income:   { sel: 'selectedIncomeCategory',  section: 'incomeCatDetailSection' },
+  expense:  { sel: 'selectedExpenseCategory', section: 'expenseCatDetailSection' },
+};
+
+// แถวที่เหลือหลังตัดหมวดที่ถูกกรองออกของการ์ดนั้น — ทุกตัวเลขของการ์ดคิดจากชุดนี้
+function visibleRows(scope) {
+  const hidden = state.hiddenCats[scope];
+  if (!hidden || hidden.size === 0) return state.filtered;
+  return state.filtered.filter(r => !hidden.has(r.category || '(ไม่ระบุ)'));
+}
+
+function renderScope(scope) {
+  if (scope === 'overview') { renderCategoryDoughnut(); renderTopCatBar(); }
+  else if (scope === 'income') renderIncomeSources();
+  else if (scope === 'expense') renderExpenseSources();
+}
+
+function hideCategories(scope, cats) {
+  const hidden = state.hiddenCats[scope];
+  let changed = false;
+  for (const c of cats) if (c && !hidden.has(c)) { hidden.add(c); changed = true; }
+  if (!changed) return;
+  const d = SCOPE_DETAIL[scope];
+  if (d && state[d.sel] && hidden.has(state[d.sel])) {
+    state[d.sel] = null;
+    document.getElementById(d.section).classList.add('hidden');
+  }
+  renderScope(scope);
+}
+
+// cats = null คือเอากลับมาทั้งหมด
+function unhideCategories(scope, cats) {
+  if (cats) cats.forEach(c => state.hiddenCats[scope].delete(c));
+  else state.hiddenCats[scope].clear();
+  renderScope(scope);
+}
+
+// label ในกราฟ → รายชื่อหมวดจริง ("อื่นๆ" คือหลายหมวดยุบรวมกัน ต้องกรองออกทั้งก้อน)
+function catsOfLabel(label, bucketMap) {
+  return (bucketMap && bucketMap[label]) ? bucketMap[label] : [label];
+}
+
+function categoryLegendClick(scope, bucketMap) {
+  return (e, item) => hideCategories(scope, catsOfLabel(item.text, bucketMap));
+}
+
+function categorySliceClick(scope, labels, bucketMap) {
+  return (e, elements) => {
+    if (!elements.length) return;
+    hideCategories(scope, catsOfLabel(labels[elements[0].index], bucketMap));
+  };
+}
+
+// ยอดรวมของแท่งซ้อน นับเฉพาะชุดข้อมูลที่ยังมองเห็น
+function visibleStackTotal(chart, idx) {
+  return chart.data.datasets.reduce(
+    (s, ds, i) => s + (chart.isDatasetVisible(i) ? (ds.data[idx] || 0) : 0), 0);
+}
+
+// ชุดข้อมูลที่มองเห็นชุดบนสุด — ใช้เป็นที่วางป้ายยอดรวมบนหัวแท่ง
+function lastVisibleDataset(chart) {
+  for (let i = chart.data.datasets.length - 1; i >= 0; i--) if (chart.isDatasetVisible(i)) return i;
+  return -1;
+}
+
+// แถบชิปหมวดที่ถูกกรองออก — คลิ๊กชิปเพื่อเอาหมวดนั้นกลับ หรือกด "แสดงทั้งหมด"
+function renderHiddenBar(elId, scope, note) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const hidden = [...state.hiddenCats[scope]];
+  if (hidden.length === 0) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  const shown = hidden.slice(0, HIDDEN_CHIP_MAX);
+  const rest  = hidden.length - shown.length;
+  el.innerHTML =
+    `<span class="text-xs text-slate-500">🚫 หมวดที่กรองออก ${hidden.length} หมวด${note ? ' ' + escapeHtml(note) : ''}:</span>` +
+    shown.map(c => `<button type="button" class="chip" style="padding:.15rem .6rem;font-size:.72rem" data-cat="${escapeHtml(c)}" title="คลิ๊กเพื่อนำกลับมาแสดง">${escapeHtml(c)} ✕</button>`).join('') +
+    (rest > 0 ? `<span class="text-xs text-slate-400">และอีก ${rest} หมวด</span>` : '') +
+    `<button type="button" class="text-xs text-brand underline" data-unhide-all="1">แสดงทั้งหมด</button>`;
+  el.querySelectorAll('button[data-cat]').forEach(b =>
+    b.addEventListener('click', () => unhideCategories(scope, [b.dataset.cat])));
+  el.querySelector('button[data-unhide-all]').addEventListener('click', () => unhideCategories(scope, null));
+}
+
+/* =========================================================
  *  RENDER — CATEGORY (doughnut + topbar)
  * ========================================================= */
 function renderCategoryDoughnut() {
-  const cats = groupByCategory(state.filtered);
+  renderHiddenBar('overviewHiddenBar', 'overview', '(มีผลกับกราฟสัดส่วนและ Top 15)');
+  const rows = visibleRows('overview');
+  const cats = groupByCategory(rows);
   const entries = [...cats.entries()];
   const top = entries.slice(0, 8);
-  const other = entries.slice(8).reduce((s, e) => s + e[1].sum, 0);
-  const labels = top.map(e => e[0]).concat(other > 0 ? ['อื่นๆ'] : []);
+  const tail = entries.slice(8);
+  const other = tail.reduce((s, e) => s + e[1].sum, 0);
+  const labels = top.map(e => e[0]).concat(other > 0 ? [OTHER_LABEL] : []);
   const data = top.map(e => e[1].sum).concat(other > 0 ? [other] : []);
+  const bucketMap = other > 0 ? { [OTHER_LABEL]: tail.map(e => e[0]) } : {};
+  const shownTotal = data.reduce((a, b) => a + b, 0);
   const colors = CAT_COLORS.concat(OTHER_COLOR);
   renderChart('catDoughnut', document.getElementById('catDoughnut'), {
     type: 'doughnut',
     data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 2, borderColor: '#fff' }] },
     options: {
       responsive: true, maintainAspectRatio: false,
+      onClick: categorySliceClick('overview', labels, bucketMap),
       plugins: {
-        legend: { position: window.innerWidth < 640 ? 'bottom' : 'right', labels: { font: { size: 11 } } },
-        tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtTHB.format(c.parsed) + ' (' + (c.parsed / data.reduce((a, b) => a + b, 0) * 100).toFixed(1) + '%)' } }
+        legend: {
+          position: window.innerWidth < 640 ? 'bottom' : 'right',
+          labels: { font: { size: 11 } },
+          onClick: categoryLegendClick('overview', bucketMap),
+        },
+        // % คิดจากยอดของหมวดที่ยังแสดงอยู่เท่านั้น ให้ตรงกับวงที่เห็นจริง
+        tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtTHB.format(c.parsed) + ' (' + (shownTotal > 0 ? (c.parsed / shownTotal * 100).toFixed(1) : '0.0') + '%)' } }
       }
     }
   });
+
+  const allCats = groupByCategory(state.filtered);
+  const grandTotal = [...allCats.values()].reduce((s, o) => s + o.sum, 0);
+  const hiddenCount = allCats.size - cats.size;
+  document.getElementById('catShareSummary').innerHTML =
+    `แสดง <b>${fmtNum.format(cats.size)}</b> หมวด รวม <b>${fmtTHB.format(shownTotal)}</b>` +
+    (hiddenCount > 0
+      ? ` · ไม่รวม <b>${fmtNum.format(hiddenCount)}</b> หมวดที่กรองออก (${fmtTHB.format(grandTotal - shownTotal)}) — ยอดรวมและ % คิดเฉพาะหมวดที่แสดง`
+      : ' · คลิ๊กหมวดในกราฟเพื่อกรองออก แล้วตัวเลขจะคำนวณใหม่ให้');
 }
 
 function renderTopCatBar() {
-  const cats = groupByCategory(state.filtered);
+  const cats = groupByCategory(visibleRows('overview'));
   const top = [...cats.entries()].slice(0, 15);
   const labels = top.map(e => e[0]);
   const data = top.map(e => e[1].sum);
@@ -1582,14 +1704,19 @@ function renderWeekBar() {
  *  RENDER — INCOME SOURCE ANALYSIS
  * ========================================================= */
 function renderIncomeSources() {
-  const cats = groupByIncomeCategory(state.filtered);
-  const accounts = groupByIncomeAccount(state.filtered);
+  renderHiddenBar('incomeHiddenBar', 'income');
+  // ทุกตัวเลขในการ์ดนี้คิดจากแถวที่เหลือหลังหักหมวดที่ถูกกรองออกจากกราฟ
+  const rows = visibleRows('income');
+  const cats = groupByIncomeCategory(rows);
+  const accounts = groupByIncomeAccount(rows);
   const total = [...cats.values()].reduce((s, o) => s + o.sum, 0);
-  const incomeRows = state.filtered.filter(r => !r.isSavings && !CREDITPAY_CATEGORIES.has(r.category) && !isInternalTransfer(r) && r.amount > 0);
+  const incomeRows = rows.filter(r => !r.isSavings && !CREDITPAY_CATEGORIES.has(r.category) && !isInternalTransfer(r) && r.amount > 0);
   const totalCount = incomeRows.reduce((s, r) => s + 1, 0);
+  const hiddenCount = groupByIncomeCategory(state.filtered).size - cats.size;
+  const hiddenNote = hiddenCount > 0 ? ` · ไม่รวม ${fmtNum.format(hiddenCount)} หมวดที่กรองออก` : '';
 
   // KPI cards — เฉลี่ยจากเดือนที่จบแล้วเท่านั้น กันเดือนปัจจุบันดึงค่าเฉลี่ยต่ำ
-  const monthMap = groupByMonth(cashFlowRows(state.filtered));
+  const monthMap = groupByMonth(cashFlowRows(rows));
   const completeIncomeMonths = [...monthMap.entries()].filter(([k, o]) => k !== currentMonthKey() && o.income > 0);
   const monthsWithIncome = completeIncomeMonths.length || [...monthMap.values()].filter(m => m.income > 0).length;
   const avgPerMonth = completeIncomeMonths.length
@@ -1601,7 +1728,7 @@ function renderIncomeSources() {
   const concentration = (topCat && total > 0) ? topPct : 0;
 
   const kpiCards = [
-    { title: 'รายรับรวม', val: fmtTHB.format(total), sub: fmtNum.format(totalCount) + ' รายการ', emoji: '💚', cls: 'text-income' },
+    { title: 'รายรับรวม', val: fmtTHB.format(total), sub: fmtNum.format(totalCount) + ' รายการ' + hiddenNote, emoji: '💚', cls: 'text-income' },
     { title: 'แหล่งใหญ่ที่สุด', val: topCat ? topCat[0] : '-', sub: topCat ? fmtTHB.format(topCat[1].sum) + ' (' + topPct.toFixed(1) + '%)' : '', emoji: '🏆', cls: 'text-brand' },
     { title: 'บัญชีรับเงินหลัก', val: topAcc ? topAcc[0] : '-', sub: topAcc ? fmtTHB.format(topAcc[1]) : '', emoji: '🏦', cls: 'text-brand' },
     { title: 'รายรับเฉลี่ย/เดือน', val: fmtTHB.format(avgPerMonth), sub: monthsWithIncome + ' เดือนที่มีรายรับ', emoji: '📅', cls: 'text-slate-700' },
@@ -1617,7 +1744,8 @@ function renderIncomeSources() {
   if (cats.size === 0) {
     renderChart('incomeCatDoughnut', document.getElementById('incomeCatDoughnut'), { type:'doughnut', data:{ labels:[], datasets:[] }, options:{} });
     renderChart('incomeMonthlyStacked', document.getElementById('incomeMonthlyStacked'), { type:'bar', data:{ labels:[], datasets:[] }, options:{} });
-    document.getElementById('incomeSourceTable').innerHTML = '<tr><td class="text-sm text-slate-500 py-3">ยังไม่พบรายการรายรับในช่วงที่เลือก</td></tr>';
+    document.getElementById('incomeSourceTable').innerHTML = '<tr><td class="text-sm text-slate-500 py-3">' +
+      (hiddenCount > 0 ? 'กรองหมวดรายรับออกหมดแล้ว — กด "แสดงทั้งหมด" ด้านบนเพื่อเอากลับมา' : 'ยังไม่พบรายการรายรับในช่วงที่เลือก') + '</td></tr>';
     document.getElementById('incomeSummary').textContent = '';
     return;
   }
@@ -1626,9 +1754,12 @@ function renderIncomeSources() {
   const entries = [...cats.entries()];
   const TOP_N = 8;
   const top = entries.slice(0, TOP_N);
-  const otherSum = entries.slice(TOP_N).reduce((s, e) => s + e[1].sum, 0);
-  const dLabels = top.map(e => e[0]).concat(otherSum > 0 ? ['อื่นๆ'] : []);
+  const dTail = entries.slice(TOP_N);
+  const otherSum = dTail.reduce((s, e) => s + e[1].sum, 0);
+  const dLabels = top.map(e => e[0]).concat(otherSum > 0 ? [OTHER_LABEL] : []);
   const dData = top.map(e => e[1].sum).concat(otherSum > 0 ? [otherSum] : []);
+  const dBucketMap = otherSum > 0 ? { [OTHER_LABEL]: dTail.map(e => e[0]) } : {};
+  const dTotal = dData.reduce((a, b) => a + b, 0);
   const incomeColors = CAT_COLORS.concat(OTHER_COLOR);
 
   renderChart('incomeCatDoughnut', document.getElementById('incomeCatDoughnut'), {
@@ -1636,9 +1767,14 @@ function renderIncomeSources() {
     data: { labels: dLabels, datasets: [{ data: dData, backgroundColor: incomeColors.slice(0, dLabels.length), borderWidth: 2, borderColor: '#fff' }] },
     options: {
       responsive: true, maintainAspectRatio: false,
+      onClick: categorySliceClick('income', dLabels, dBucketMap),
       plugins: {
-        legend: { position: window.innerWidth < 640 ? 'bottom' : 'right', labels: { font: { size: 11 } } },
-        tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtTHB.format(c.parsed) + ' (' + (c.parsed / dData.reduce((a, b) => a + b, 0) * 100).toFixed(1) + '%)' } }
+        legend: {
+          position: window.innerWidth < 640 ? 'bottom' : 'right',
+          labels: { font: { size: 11 } },
+          onClick: categoryLegendClick('income', dBucketMap),
+        },
+        tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtTHB.format(c.parsed) + ' (' + (dTotal > 0 ? (c.parsed / dTotal * 100).toFixed(1) : '0.0') + '%)' } }
       }
     }
   });
@@ -1646,9 +1782,11 @@ function renderIncomeSources() {
   // Monthly stacked bar (top 6 categories + others)
   const STACK_N = 6;
   const stackTopCats = entries.slice(0, STACK_N).map(e => e[0]);
-  const monthCatMap = groupIncomeByMonthAndCategory(state.filtered, stackTopCats);
+  const stackTail = entries.slice(STACK_N).map(e => e[0]);
+  const monthCatMap = groupIncomeByMonthAndCategory(rows, stackTopCats);
   const monthKeys = [...monthCatMap.keys()];
-  const stackBuckets = stackTopCats.concat(entries.length > STACK_N ? ['อื่นๆ'] : []);
+  const stackBuckets = stackTopCats.concat(entries.length > STACK_N ? [OTHER_LABEL] : []);
+  const stackBucketMap = stackTail.length ? { [OTHER_LABEL]: stackTail } : {};
   const stackDatasets = stackBuckets.map((bucket, i) => ({
     label: bucket,
     data: monthKeys.map(k => monthCatMap.get(k)[bucket] || 0),
@@ -1666,14 +1804,17 @@ function renderIncomeSources() {
       layout: { padding: { top: 24 } },
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } },
+        legend: {
+          position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 },
+          onClick: categoryLegendClick('income', stackBucketMap),
+        },
         tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtTHB.format(c.parsed.y) } },
         datalabels: {
-          display: (ctx) => ctx.datasetIndex === ctx.chart.data.datasets.length - 1,
+          // ยอดรวมบนหัวแท่งต้องนับเฉพาะชุดที่มองเห็น ไม่งั้นตัวเลขจะเกินความสูงของแท่งจริง
+          display: (ctx) => ctx.datasetIndex === lastVisibleDataset(ctx.chart),
           anchor: 'end', align: 'top', clip: false,
           formatter: (value, ctx) => {
-            const idx = ctx.dataIndex;
-            const total = ctx.chart.data.datasets.reduce((s, ds) => s + (ds.data[idx] || 0), 0);
+            const total = visibleStackTotal(ctx.chart, ctx.dataIndex);
             return total > 0 ? abbrev(total) : null;
           },
           font: { size: 10 },
@@ -1744,7 +1885,8 @@ function renderIncomeSources() {
       ? `📌 แหล่งหลักคือ <b>${escapeHtml(topCat[0])}</b> (${concentration.toFixed(1)}%) — ลองกระจายความเสี่ยงด้วยรายรับเสริม`
       : `✅ รายรับกระจายดี — แหล่งใหญ่สุด <b>${escapeHtml(topCat[0])}</b> เพียง ${concentration.toFixed(1)}%`;
   document.getElementById('incomeSummary').innerHTML =
-    `${concNote} · มี <b>${cats.size}</b> หมวดรายรับ · จาก <b>${accounts.size}</b> บัญชี`;
+    `${concNote} · มี <b>${cats.size}</b> หมวดรายรับ · จาก <b>${accounts.size}</b> บัญชี` +
+    (hiddenCount > 0 ? ` · <span class="text-slate-400">ตัวเลขทั้งหมดไม่รวม ${fmtNum.format(hiddenCount)} หมวดที่กรองออก</span>` : '');
 }
 
 function renderIncomeCategoryDetail(category) {
@@ -1783,14 +1925,19 @@ function renderIncomeCategoryDetail(category) {
  *  RENDER — EXPENSE SOURCE ANALYSIS
  * ========================================================= */
 function renderExpenseSources() {
-  const cats = groupByExpenseCategoryRich(state.filtered);
-  const accounts = groupByAccount(state.filtered.filter(r => !isInternalTransfer(r)));
+  renderHiddenBar('expenseHiddenBar', 'expense');
+  // ทุกตัวเลขในการ์ดนี้คิดจากแถวที่เหลือหลังหักหมวดที่ถูกกรองออกจากกราฟ
+  const rows = visibleRows('expense');
+  const cats = groupByExpenseCategoryRich(rows);
+  const accounts = groupByAccount(rows.filter(r => !isInternalTransfer(r)));
   const total = [...cats.values()].reduce((s, o) => s + o.sum, 0);
-  const expenseRows = state.filtered.filter(r => !r.isSavings && !isInternalTransfer(r) && !CREDITPAY_CATEGORIES.has(r.category) && r.amount < 0);
+  const expenseRows = rows.filter(r => !r.isSavings && !isInternalTransfer(r) && !CREDITPAY_CATEGORIES.has(r.category) && r.amount < 0);
   const totalCount = expenseRows.length;
+  const hiddenCount = groupByExpenseCategoryRich(state.filtered).size - cats.size;
+  const hiddenNote = hiddenCount > 0 ? ` · ไม่รวม ${fmtNum.format(hiddenCount)} หมวดที่กรองออก` : '';
 
   // เฉลี่ยจากเดือนที่จบแล้วเท่านั้น กันเดือนปัจจุบันดึงค่าเฉลี่ยต่ำ
-  const monthMap = groupByMonth(cashFlowRows(state.filtered));
+  const monthMap = groupByMonth(cashFlowRows(rows));
   const completeExpenseMonths = [...monthMap.entries()].filter(([k, o]) => k !== currentMonthKey() && o.expense > 0);
   const monthsWithExpense = completeExpenseMonths.length || [...monthMap.values()].filter(m => m.expense > 0).length;
   const avgPerMonth = completeExpenseMonths.length
@@ -1801,7 +1948,7 @@ function renderExpenseSources() {
   const topPct = (topCat && total > 0) ? (topCat[1].sum / total * 100) : 0;
 
   const kpiCards = [
-    { title: 'รายจ่ายรวม', val: fmtTHB.format(total), sub: fmtNum.format(totalCount) + ' รายการ', emoji: '❤️', cls: 'text-expense' },
+    { title: 'รายจ่ายรวม', val: fmtTHB.format(total), sub: fmtNum.format(totalCount) + ' รายการ' + hiddenNote, emoji: '❤️', cls: 'text-expense' },
     { title: 'หมวดใหญ่สุด', val: topCat ? topCat[0] : '-', sub: topCat ? fmtTHB.format(topCat[1].sum) + ' (' + topPct.toFixed(1) + '%)' : '', emoji: '🏆', cls: 'text-expense' },
     { title: 'บัญชีจ่ายหลัก', val: topAcc ? topAcc[0] : '-', sub: topAcc ? fmtTHB.format(topAcc[1]) : '', emoji: '🏦', cls: 'text-brand' },
     { title: 'รายจ่ายเฉลี่ย/เดือน', val: fmtTHB.format(avgPerMonth), sub: monthsWithExpense + ' เดือนที่มีรายจ่าย', emoji: '📅', cls: 'text-slate-700' },
@@ -1817,7 +1964,8 @@ function renderExpenseSources() {
   if (cats.size === 0) {
     renderChart('expenseCatDoughnut', document.getElementById('expenseCatDoughnut'), { type:'doughnut', data:{ labels:[], datasets:[] }, options:{} });
     renderChart('expenseMonthlyStacked', document.getElementById('expenseMonthlyStacked'), { type:'bar', data:{ labels:[], datasets:[] }, options:{} });
-    document.getElementById('expenseSourceTable').innerHTML = '<tr><td class="text-sm text-slate-500 py-3">ยังไม่พบรายการรายจ่ายในช่วงที่เลือก</td></tr>';
+    document.getElementById('expenseSourceTable').innerHTML = '<tr><td class="text-sm text-slate-500 py-3">' +
+      (hiddenCount > 0 ? 'กรองหมวดรายจ่ายออกหมดแล้ว — กด "แสดงทั้งหมด" ด้านบนเพื่อเอากลับมา' : 'ยังไม่พบรายการรายจ่ายในช่วงที่เลือก') + '</td></tr>';
     document.getElementById('expenseSourceSummary').textContent = '';
     return;
   }
@@ -1826,27 +1974,37 @@ function renderExpenseSources() {
   const expenseColors = CAT_COLORS.concat(OTHER_COLOR);
   const TOP_N = 8;
   const top = entries.slice(0, TOP_N);
-  const otherSum = entries.slice(TOP_N).reduce((s, e) => s + e[1].sum, 0);
-  const dLabels = top.map(e => e[0]).concat(otherSum > 0 ? ['อื่นๆ'] : []);
+  const dTail = entries.slice(TOP_N);
+  const otherSum = dTail.reduce((s, e) => s + e[1].sum, 0);
+  const dLabels = top.map(e => e[0]).concat(otherSum > 0 ? [OTHER_LABEL] : []);
   const dData = top.map(e => e[1].sum).concat(otherSum > 0 ? [otherSum] : []);
+  const dBucketMap = otherSum > 0 ? { [OTHER_LABEL]: dTail.map(e => e[0]) } : {};
+  const dTotal = dData.reduce((a, b) => a + b, 0);
 
   renderChart('expenseCatDoughnut', document.getElementById('expenseCatDoughnut'), {
     type: 'doughnut',
     data: { labels: dLabels, datasets: [{ data: dData, backgroundColor: expenseColors.slice(0, dLabels.length), borderWidth: 2, borderColor: '#fff' }] },
     options: {
       responsive: true, maintainAspectRatio: false,
+      onClick: categorySliceClick('expense', dLabels, dBucketMap),
       plugins: {
-        legend: { position: window.innerWidth < 640 ? 'bottom' : 'right', labels: { font: { size: 11 } } },
-        tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtTHB.format(c.parsed) + ' (' + (c.parsed / dData.reduce((a, b) => a + b, 0) * 100).toFixed(1) + '%)' } }
+        legend: {
+          position: window.innerWidth < 640 ? 'bottom' : 'right',
+          labels: { font: { size: 11 } },
+          onClick: categoryLegendClick('expense', dBucketMap),
+        },
+        tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtTHB.format(c.parsed) + ' (' + (dTotal > 0 ? (c.parsed / dTotal * 100).toFixed(1) : '0.0') + '%)' } }
       }
     }
   });
 
   const STACK_N = 6;
   const stackTopCats = entries.slice(0, STACK_N).map(e => e[0]);
-  const monthCatMap = groupExpenseByMonthAndCategory(state.filtered, stackTopCats);
+  const stackTail = entries.slice(STACK_N).map(e => e[0]);
+  const monthCatMap = groupExpenseByMonthAndCategory(rows, stackTopCats);
   const monthKeys = [...monthCatMap.keys()];
-  const stackBuckets = stackTopCats.concat(entries.length > STACK_N ? ['อื่นๆ'] : []);
+  const stackBuckets = stackTopCats.concat(entries.length > STACK_N ? [OTHER_LABEL] : []);
+  const stackBucketMap = stackTail.length ? { [OTHER_LABEL]: stackTail } : {};
   const stackDatasets = stackBuckets.map((bucket, i) => ({
     label: bucket,
     data: monthKeys.map(k => monthCatMap.get(k)[bucket] || 0),
@@ -1864,14 +2022,17 @@ function renderExpenseSources() {
       layout: { padding: { top: 24 } },
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } },
+        legend: {
+          position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 },
+          onClick: categoryLegendClick('expense', stackBucketMap),
+        },
         tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtTHB.format(c.parsed.y) } },
         datalabels: {
-          display: (ctx) => ctx.datasetIndex === ctx.chart.data.datasets.length - 1,
+          // ยอดรวมบนหัวแท่งต้องนับเฉพาะชุดที่มองเห็น ไม่งั้นตัวเลขจะเกินความสูงของแท่งจริง
+          display: (ctx) => ctx.datasetIndex === lastVisibleDataset(ctx.chart),
           anchor: 'end', align: 'top', clip: false,
           formatter: (value, ctx) => {
-            const idx = ctx.dataIndex;
-            const t = ctx.chart.data.datasets.reduce((s, ds) => s + (ds.data[idx] || 0), 0);
+            const t = visibleStackTotal(ctx.chart, ctx.dataIndex);
             return t > 0 ? abbrev(t) : null;
           },
           font: { size: 10 },
@@ -1940,7 +2101,8 @@ function renderExpenseSources() {
       ? `📌 หมวดหลักคือ <b>${escapeHtml(topCat[0])}</b> (${topPct.toFixed(1)}%) — ลองดูว่ามีส่วนใดลดได้บ้าง`
       : `✅ รายจ่ายกระจายหลายหมวด — หมวดใหญ่สุด <b>${escapeHtml(topCat[0])}</b> เพียง ${topPct.toFixed(1)}%`;
   document.getElementById('expenseSourceSummary').innerHTML =
-    `${concNote} · มี <b>${cats.size}</b> หมวดรายจ่าย · จาก <b>${accounts.size}</b> บัญชี`;
+    `${concNote} · มี <b>${cats.size}</b> หมวดรายจ่าย · จาก <b>${accounts.size}</b> บัญชี` +
+    (hiddenCount > 0 ? ` · <span class="text-slate-400">ตัวเลขทั้งหมดไม่รวม ${fmtNum.format(hiddenCount)} หมวดที่กรองออก</span>` : '');
 }
 
 function renderExpenseCategoryDetail(category) {
@@ -2570,6 +2732,8 @@ function setDefaults() {
   state.filters.categories = new Set();
   state.filters.includeInternal = false;
   state.filters.includeCreditPay = false;
+  // ข้อมูลชุดใหม่ = ชื่อหมวดอาจไม่เหมือนเดิม ล้างหมวดที่กรองออกจากกราฟทิ้ง
+  state.hiddenCats = { overview: new Set(), income: new Set(), expense: new Set() };
   document.getElementById('dateFrom').value = localISODate(min);
   document.getElementById('dateTo').value = localISODate(max);
 }
