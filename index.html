@@ -417,6 +417,45 @@
     </div>
   </section>
 
+  <!-- Account Value vs Expense -->
+  <section class="card p-5 mb-6" data-card="account-value" data-card-label="มูลค่าบัญชี & เทียบรายจ่าย">
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">💼 มูลค่าบัญชี & วิเคราะห์เทียบรายจ่าย</h2><i class="info-btn" data-tip="ประเมิน &quot;มูลค่า&quot; (เงินคงเหลือ) ของแต่ละบัญชี แล้วเทียบกับรายจ่ายที่ออกจากบัญชีนั้น เพื่อตอบว่าบัญชีไหนมีเงินหนา บัญชีไหนถูกใช้หนัก และเงินในแต่ละบัญชีจะอยู่ได้อีกนานแค่ไหน">i</i></div>
+      <div class="text-xs text-slate-500">มูลค่าบัญชี = ผลรวมทุกรายการของบัญชีนั้นตั้งแต่รายการแรก ถึงวันสุดท้ายของช่วงที่เลือก</div>
+    </div>
+    <div id="accountValueKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+    <div class="grid lg:grid-cols-2 gap-6 mb-4">
+      <div>
+        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">⚖️ มูลค่าคงเหลือ vs รายจ่ายเฉลี่ย/เดือน</h3><i class="info-btn" data-tip="แท่งน้ำเงิน = เงินที่เหลืออยู่ในบัญชี · แท่งแดง = รายจ่ายเฉลี่ยต่อเดือนที่ออกจากบัญชีนั้น ถ้าแท่งแดงยาวใกล้หรือเกินแท่งน้ำเงิน แปลว่าบัญชีนั้นใช้เงินเร็วกว่าที่มีอยู่">i</i></div>
+        <div class="relative h-80"><canvas id="accountValueBar"></canvas></div>
+      </div>
+      <div>
+        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">📈 มูลค่าบัญชีสิ้นเดือน (ย้อนหลัง)</h3><i class="info-btn" data-tip="เส้นแสดงยอดคงเหลือของแต่ละบัญชี ณ สิ้นเดือน (สะสมต่อเนื่องจากรายการแรกสุด) เส้นประดำ = มูลค่ารวมทุกบัญชี ใช้ดูว่ามูลค่ากำลังโตขึ้นหรือถูกกินลงเรื่อยๆ">i</i></div>
+        <div class="relative h-80"><canvas id="accountValueTrend"></canvas></div>
+      </div>
+    </div>
+    <div class="mb-4">
+      <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">⏳ เงินในบัญชีอยู่ได้อีกกี่เดือน (Runway)</h3><i class="info-btn" data-tip="Runway = มูลค่าคงเหลือ ÷ รายจ่ายเฉลี่ยต่อเดือนของบัญชีนั้น สีเขียว = เกิน 6 เดือน · เหลือง = 3–6 เดือน · ส้ม = 1–3 เดือน · แดง = ไม่ถึง 1 เดือน แท่งถูกตัดที่ 36 เดือนเพื่อให้อ่านง่าย">i</i></div>
+      <div id="accountRunwayWrap" class="relative h-64"><canvas id="accountRunwayBar"></canvas></div>
+      <p id="accountRunwayNote" class="text-sm text-slate-500 py-6 hidden"></p>
+    </div>
+    <div class="overflow-x-auto">
+      <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">📋 ตารางเปรียบเทียบรายบัญชี</h3><i class="info-btn" data-tip="สรุปทุกตัวเลขของแต่ละบัญชีในตารางเดียว คลิ๊กที่แถวเพื่อดูกราฟมูลค่าและรายจ่ายรายเดือนของบัญชีนั้น">i</i></div>
+      <table class="tbl w-full text-sm" id="accountValueTable"></table>
+    </div>
+    <p id="accountValueSummary" class="text-sm text-slate-600 mt-3"></p>
+    <ul id="accountValueInsights" class="mt-2 space-y-1.5 text-sm"></ul>
+    <!-- Account Detail -->
+    <div id="accountValueDetailSection" class="hidden mt-4 pt-4 border-t border-slate-100">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h3 class="text-sm font-semibold text-slate-700">🔍 <span id="accountValueDetailTitle">บัญชี</span> — มูลค่าคงเหลือ vs รายจ่ายรายเดือน</h3>
+        <button id="accountValueDetailClose" class="text-xs text-slate-400 hover:text-slate-700 px-2 py-1 rounded border border-slate-200 hover:border-slate-400 transition">✕ ปิด</button>
+      </div>
+      <div class="relative h-64"><canvas id="accountValueDetailChart"></canvas></div>
+      <div id="accountValueDetailSummary" class="text-sm text-slate-600 mt-2"></div>
+    </div>
+  </section>
+
   <!-- Income Source Analysis -->
   <section class="card p-5 mb-6" data-card="income" data-card-label="วิเคราะห์แหล่งรายรับ">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -876,6 +915,7 @@ const state = {
   selectedCategory: null,
   selectedIncomeCategory: null,
   selectedExpenseCategory: null,
+  selectedAccount: null,
   // หมวดที่ผู้ใช้คลิ๊กกรองออกจากกราฟ แยกตามการ์ด — ทุกตัวเลขในการ์ดนั้นคำนวณใหม่จากหมวดที่เหลือ
   hiddenCats: { overview: new Set(), income: new Set(), expense: new Set() },
 };
@@ -1047,6 +1087,65 @@ function groupByAccount(rows) {
     map.set(k, map.get(k) + Math.abs(r.amount));
   }
   return new Map([...map.entries()].sort((a, b) => b[1] - a[1]));
+}
+
+function monthKeyOf(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+/* ---------- มูลค่าบัญชี (account value) ----------
+ * ยอดคงเหลือของบัญชี = ผลรวมทุกรายการของบัญชีนั้นตั้งแต่รายการแรกสุด
+ * ต้องนับ "ทุก" รายการ รวมโอนภายในและรายการบัตรเครดิต เพราะเงินเคลื่อนเข้าออกบัญชีจริง
+ * (ต่างจาก groupByAccount ที่ตัดรายการเหล่านั้นทิ้ง เพราะสนใจแค่พฤติกรรมการใช้เงิน)
+ * หมายเหตุ: CSV ของ Money Lover ไม่มียอดยกมาตั้งต้น ตัวเลขนี้จึงเป็นมูลค่าที่เกิดจากรายการที่บันทึกไว้
+ */
+function accountBalancesAsOf(asOf) {
+  const map = new Map();
+  for (const r of state.rows) {
+    if (asOf && r.date > asOf) continue;
+    const k = r.account || '(ไม่ระบุ)';
+    map.set(k, (map.get(k) || 0) + r.amount);
+  }
+  return map;
+}
+
+// ยอดคงเหลือ ณ สิ้นเดือนของแต่ละบัญชี — เดือนก่อนช่วงที่แสดงถูกยุบเป็น "ยอดยกมา"
+function accountBalanceByMonth(monthKeys) {
+  const out = new Map();
+  if (!monthKeys.length) return out;
+  const idx = new Map(monthKeys.map((k, i) => [k, i]));
+  const first = monthKeys[0];
+  const deltas = new Map(), opening = new Map();
+  const ensure = (k) => { if (!deltas.has(k)) deltas.set(k, Array(monthKeys.length).fill(0)); return deltas.get(k); };
+  for (const r of state.rows) {
+    const acc = r.account || '(ไม่ระบุ)';
+    const key = monthKeyOf(r.date);
+    if (key < first) { opening.set(acc, (opening.get(acc) || 0) + r.amount); ensure(acc); continue; }
+    if (!idx.has(key)) continue;   // เดือนหลังช่วงที่แสดง — ไม่นับ
+    ensure(acc)[idx.get(key)] += r.amount;
+  }
+  for (const [acc, arr] of deltas) {
+    let run = opening.get(acc) || 0;
+    out.set(acc, arr.map(d => (run += d)));
+  }
+  return out;
+}
+
+// รายจ่ายจริงรายเดือนแยกตามบัญชี (นิยามรายจ่ายเดียวกับ groupByAccount)
+function accountExpenseByMonth(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    if (r.isSavings) continue;
+    if (isInternalTransfer(r)) continue;
+    if (CREDITPAY_CATEGORIES.has(r.category)) continue;
+    if (r.amount >= 0) continue;
+    const acc = r.account || '(ไม่ระบุ)';
+    if (!map.has(acc)) map.set(acc, new Map());
+    const mm = map.get(acc);
+    const key = monthKeyOf(r.date);
+    mm.set(key, (mm.get(key) || 0) + Math.abs(r.amount));
+  }
+  return map;
 }
 
 function groupByIncomeCategory(rows) {
@@ -1698,6 +1797,413 @@ function renderWeekBar() {
       }
     }
   });
+}
+
+/* =========================================================
+ *  RENDER — ACCOUNT VALUE vs EXPENSE
+ * ========================================================= */
+const ACCOUNT_VALUE_MAX_BARS = 10;   // จำนวนบัญชีสูงสุดที่วาดในกราฟ (ที่เหลือดูในตาราง)
+const ACCOUNT_TREND_LINES = 6;       // จำนวนเส้นในกราฟมูลค่าย้อนหลัง
+const ACCOUNT_TREND_MONTHS = 12;
+const RUNWAY_CAP = 36;               // ตัดแท่ง runway ที่ 36 เดือน ไม่งั้นบัญชีพักเงินจะบีบแท่งอื่นจนอ่านไม่ออก
+
+// จัดระดับสุขภาพบัญชีจาก "มูลค่าคงเหลือเทียบรายจ่ายต่อเดือน" — คือหัวใจของการ์ดนี้
+function accountHealth(balance, avgMonthExpense) {
+  if (balance < 0)          return { rank: 0, label: 'ติดลบ',   emoji: '🔴', color: '#c93534', badge: 'bg-rose-100 text-rose-700' };
+  if (avgMonthExpense <= 0) return { rank: 5, label: 'พักเงิน', emoji: '⚪️', color: '#98979b', badge: 'bg-slate-100 text-slate-600' };
+  const r = balance / avgMonthExpense;
+  if (r < 1) return { rank: 1, label: 'วิกฤต',   emoji: '🔴', color: '#c93534', badge: 'bg-rose-100 text-rose-700' };
+  if (r < 3) return { rank: 2, label: 'ตึงตัว',  emoji: '🟠', color: '#eb6834', badge: 'bg-orange-100 text-orange-700' };
+  if (r < 6) return { rank: 3, label: 'พอใช้',   emoji: '🟡', color: '#eda100', badge: 'bg-amber-100 text-amber-700' };
+  return       { rank: 4, label: 'แข็งแรง', emoji: '🟢', color: '#1baf7a', badge: 'bg-emerald-100 text-emerald-700' };
+}
+
+function runwayText(months) {
+  if (!isFinite(months)) return '∞';
+  if (months < 0) return '—';
+  if (months >= 120) return '10 ปี+';
+  if (months < 1) return (months * 30).toFixed(0) + ' วัน';
+  return months.toFixed(1) + ' เดือน';
+}
+
+/* รวมทุกตัวเลขของการ์ดไว้ที่เดียว เพื่อให้ KPI กราฟ ตาราง และ insight อ่านจากชุดเดียวกันเสมอ */
+function buildAccountValueStats() {
+  const asOf = state.filters.dateTo || null;
+  const balances = accountBalancesAsOf(asOf);
+  const expByMonth = accountExpenseByMonth(state.filtered);
+
+  // เดือนของช่วงที่เลือก (เติมเดือนที่ไม่มีรายการ) — เดือนว่างต้องถูกนับเป็น 0 ในค่าเฉลี่ยด้วย
+  const monthKeys = fillMonthGaps([...groupByMonth(state.filtered).keys()]);
+  // เฉลี่ยจากเดือนที่จบแล้วเท่านั้น กันเดือนปัจจุบันดึงค่าเฉลี่ยต่ำจนดู runway สวยเกินจริง
+  const avgKeys = monthKeys.filter(k => k !== currentMonthKey());
+  // ถ้าช่วงที่เลือกยังไม่มีเดือนไหนจบเลย (เช่น กด "7 วัน") การหารด้วยจำนวนเดือนจะเพี้ยน
+  // → เปลี่ยนไปเทียบเป็นรายวันแล้วคูณ 30 แทน
+  const useDays = avgKeys.length === 0;
+  const { dateFrom, dateTo } = state.filters;
+  const periodDays = (dateFrom && dateTo)
+    ? Math.max(1, Math.round((dateTo - dateFrom) / 86400000) + 1)
+    : Math.max(1, daysSpan(state.filtered));
+  const avgBasis = useDays
+    ? { kind: 'days', n: periodDays, text: `ประมาณจาก ${fmtNum.format(periodDays)} วัน` }
+    : { kind: 'months', n: avgKeys.length, text: `เฉลี่ยจาก ${avgKeys.length} เดือนที่จบแล้ว` };
+
+  const meta = new Map();
+  for (const r of state.filtered) {
+    const acc = r.account || '(ไม่ระบุ)';
+    if (!meta.has(acc)) meta.set(acc, { count: 0, expCount: 0, last: null });
+    const o = meta.get(acc);
+    o.count++;
+    if (r.amount < 0 && !r.isSavings && !isInternalTransfer(r) && !CREDITPAY_CATEGORIES.has(r.category)) o.expCount++;
+    if (!o.last || r.date > o.last) o.last = r.date;
+  }
+
+  const sel = state.filters.accounts;
+  const names = new Set([...balances.keys(), ...expByMonth.keys(), ...meta.keys()]);
+  const stats = [];
+  for (const name of names) {
+    if (sel.size && !sel.has(name)) continue;
+    const perMonth = expByMonth.get(name) || new Map();
+    const balance = balances.get(name) || 0;
+    const expense = [...perMonth.values()].reduce((a, b) => a + b, 0);
+    const info = meta.get(name) || { count: 0, expCount: 0, last: null };
+    if (balance === 0 && expense === 0 && info.count === 0) continue;
+    const avgMonth = useDays
+      ? (expense / periodDays) * 30
+      : avgKeys.reduce((s, k) => s + (perMonth.get(k) || 0), 0) / avgKeys.length;
+    const runway = avgMonth > 0 ? balance / avgMonth : Infinity;
+    // อัตราไหลออก = รายจ่ายต่อเดือนคิดเป็นกี่ % ของมูลค่าที่มี — ยิ่งสูงยิ่งกินตัวเองเร็ว
+    const burnPct = balance > 0 ? (avgMonth / balance) * 100 : (avgMonth > 0 ? Infinity : 0);
+    stats.push({
+      name, balance, expense, avgMonth, runway, burnPct, perMonth,
+      count: info.count, expCount: info.expCount, last: info.last,
+      health: accountHealth(balance, avgMonth),
+    });
+  }
+  stats.sort((a, b) => b.balance - a.balance);
+
+  const totals = stats.reduce((t, s) => {
+    t.balance += s.balance;
+    t.expense += s.expense;
+    t.avgMonth += s.avgMonth;
+    t.positive += Math.max(0, s.balance);
+    return t;
+  }, { balance: 0, expense: 0, avgMonth: 0, positive: 0 });
+  totals.runway = totals.avgMonth > 0 ? totals.balance / totals.avgMonth : Infinity;
+  totals.health = accountHealth(totals.balance, totals.avgMonth);
+
+  return { stats, totals, monthKeys, avgKeys, avgBasis, asOf };
+}
+
+function renderAccountValue() {
+  const { stats, totals, monthKeys, avgBasis, asOf } = buildAccountValueStats();
+  const blank = { type: 'bar', data: { labels: [], datasets: [] }, options: {} };
+
+  if (stats.length === 0) {
+    document.getElementById('accountValueKpi').innerHTML = '';
+    renderChart('accountValueBar', document.getElementById('accountValueBar'), blank);
+    renderChart('accountValueTrend', document.getElementById('accountValueTrend'), blank);
+    renderChart('accountRunwayBar', document.getElementById('accountRunwayBar'), blank);
+    document.getElementById('accountRunwayWrap').classList.add('hidden');
+    const note = document.getElementById('accountRunwayNote');
+    note.classList.remove('hidden');
+    note.textContent = 'ยังไม่พบข้อมูลบัญชีในช่วงที่เลือก';
+    document.getElementById('accountValueTable').innerHTML = '<tr><td class="text-sm text-slate-500 py-3">ยังไม่พบข้อมูลบัญชีในช่วงที่เลือก</td></tr>';
+    document.getElementById('accountValueSummary').textContent = '';
+    document.getElementById('accountValueInsights').innerHTML = '';
+    return;
+  }
+
+  /* ---------- KPI ---------- */
+  const top = stats[0];
+  const topShare = totals.positive > 0 ? (Math.max(0, top.balance) / totals.positive * 100) : 0;
+  const asOfText = asOf ? fmtDate(asOf) : 'ล่าสุด';
+  const kpiCards = [
+    { title: 'มูลค่ารวมทุกบัญชี', val: fmtTHB.format(totals.balance),
+      sub: `ณ ${asOfText} · ${stats.length} บัญชี`, emoji: '💼',
+      cls: totals.balance >= 0 ? 'text-brand' : 'text-expense' },
+    { title: 'บัญชีมูลค่าสูงสุด', val: top.name,
+      sub: `${fmtTHB.format(top.balance)} (${topShare.toFixed(1)}% ของเงินที่มี)`, emoji: '🏆', cls: 'text-brand' },
+    { title: 'รายจ่ายเฉลี่ย/เดือน', val: fmtTHB.format(totals.avgMonth),
+      sub: avgBasis.text, emoji: '📉', cls: 'text-expense' },
+    { title: 'มูลค่ารวมอยู่ได้อีก', val: runwayText(totals.runway),
+      sub: `${totals.health.emoji} ${totals.health.label} · มูลค่า ÷ รายจ่ายต่อเดือน`, emoji: '⏳',
+      cls: totals.health.rank <= 2 ? 'text-expense' : 'text-income' },
+  ];
+  document.getElementById('accountValueKpi').innerHTML = kpiCards.map(c => `
+    <div class="subcard">
+      <div class="text-xs text-slate-500">${c.emoji} ${c.title}</div>
+      <div class="text-lg font-bold ${c.cls}" title="${escapeHtml(String(c.val))}">${escapeHtml(String(c.val))}</div>
+      ${c.sub ? `<div class="text-xs text-slate-500 mt-0.5">${escapeHtml(c.sub)}</div>` : ''}
+    </div>
+  `).join('');
+
+  /* ---------- กราฟ 1: มูลค่า vs รายจ่ายเฉลี่ย/เดือน ---------- */
+  const barStats = [...stats]
+    .sort((a, b) => Math.max(Math.abs(b.balance), b.avgMonth) - Math.max(Math.abs(a.balance), a.avgMonth))
+    .slice(0, ACCOUNT_VALUE_MAX_BARS);
+  renderChart('accountValueBar', document.getElementById('accountValueBar'), {
+    type: 'bar',
+    plugins: [ChartDataLabels],
+    data: {
+      labels: barStats.map(s => s.name),
+      datasets: [
+        { label: 'มูลค่าคงเหลือ', data: barStats.map(s => s.balance), backgroundColor: '#2a78d6', borderRadius: 4 },
+        { label: 'รายจ่ายเฉลี่ย/เดือน', data: barStats.map(s => s.avgMonth), backgroundColor: '#e34948', borderRadius: 4 },
+      ],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 46 } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtTHB.format(c.parsed.x) } },
+        datalabels: {
+          anchor: 'end', align: 'right', clip: false,
+          formatter: (v) => (v === 0 ? null : abbrev(v)),
+          font: { size: 9 }, color: '#3a3a3c',
+        },
+      },
+      scales: {
+        x: { ticks: { callback: (v) => abbrev(v) } },
+        y: { ticks: { font: { size: 10 } } },
+      },
+    },
+  });
+
+  /* ---------- กราฟ 2: มูลค่าสิ้นเดือนย้อนหลัง ---------- */
+  const trendKeys = monthKeys.slice(-ACCOUNT_TREND_MONTHS);
+  const balSeries = accountBalanceByMonth(trendKeys);
+  const trendStats = [...stats].sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance)).slice(0, ACCOUNT_TREND_LINES);
+  const trendDatasets = trendStats.map((s, i) => ({
+    label: s.name,
+    data: balSeries.get(s.name) || trendKeys.map(() => 0),
+    borderColor: CAT_COLORS[i % CAT_COLORS.length],
+    backgroundColor: 'transparent',
+    tension: .3, pointRadius: 2, borderWidth: 2,
+  }));
+  if (trendKeys.length && trendStats.length > 1) {
+    const names = new Set(stats.map(s => s.name));
+    trendDatasets.push({
+      label: 'รวมทุกบัญชี',
+      data: trendKeys.map((_, i) => {
+        let sum = 0;
+        for (const [acc, arr] of balSeries) if (names.has(acc)) sum += arr[i];
+        return sum;
+      }),
+      borderColor: '#1c1c1e', borderDash: [5, 4], backgroundColor: 'transparent',
+      tension: .3, pointRadius: 0, borderWidth: 2,
+    });
+  }
+  renderChart('accountValueTrend', document.getElementById('accountValueTrend'), {
+    type: 'line',
+    data: { labels: trendKeys.map(monthLabel), datasets: trendDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtTHB.format(c.parsed.y) } },
+      },
+      scales: { y: { ticks: { callback: (v) => abbrev(v) } }, x: { ticks: { font: { size: 10 } } } },
+    },
+  });
+
+  /* ---------- กราฟ 3: Runway ---------- */
+  const runwayStats = stats.filter(s => s.balance > 0 && s.avgMonth > 0).sort((a, b) => a.runway - b.runway).slice(0, ACCOUNT_VALUE_MAX_BARS);
+  // กราฟเปล่าดูเหมือนหน้าพัง — ถ้าไม่มีบัญชีไหนคำนวณ runway ได้ ให้บอกเหตุผลไปเลย
+  const runwayNote = document.getElementById('accountRunwayNote');
+  const runwayWrap = document.getElementById('accountRunwayWrap');
+  runwayWrap.classList.toggle('hidden', runwayStats.length === 0);
+  runwayNote.classList.toggle('hidden', runwayStats.length > 0);
+  if (runwayStats.length === 0) {
+    runwayNote.textContent = stats.some(s => s.balance > 0)
+      ? 'ยังไม่มีรายจ่ายออกจากบัญชีที่มียอดเป็นบวกในช่วงที่เลือก จึงคำนวณ runway ไม่ได้ — ลองขยายช่วงวันที่'
+      : 'ทุกบัญชีมียอดคงเหลือติดลบหรือเป็นศูนย์ จึงคำนวณ runway ไม่ได้';
+  }
+  renderChart('accountRunwayBar', document.getElementById('accountRunwayBar'), {
+    type: 'bar',
+    plugins: [ChartDataLabels],
+    data: {
+      labels: runwayStats.map(s => s.name),
+      datasets: [{
+        label: 'อยู่ได้อีก (เดือน)',
+        data: runwayStats.map(s => Math.min(s.runway, RUNWAY_CAP)),
+        backgroundColor: runwayStats.map(s => s.health.color),
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 56 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => runwayText(runwayStats[c.dataIndex].runway) + ' · ' + runwayStats[c.dataIndex].health.emoji + ' ' + runwayStats[c.dataIndex].health.label } },
+        datalabels: {
+          anchor: 'end', align: 'right', clip: false,
+          formatter: (v, ctx) => runwayText(runwayStats[ctx.dataIndex].runway),
+          font: { size: 10 }, color: '#3a3a3c',
+        },
+      },
+      scales: {
+        x: { max: RUNWAY_CAP, title: { display: true, text: 'เดือน (ตัดที่ ' + RUNWAY_CAP + ')' } },
+        y: { ticks: { font: { size: 10 } } },
+      },
+    },
+  });
+
+  /* ---------- ตาราง ---------- */
+  let html = '<thead><tr class="text-left text-xs text-slate-500 border-b">';
+  html += '<th class="py-2 pr-3">บัญชี</th>';
+  html += '<th class="py-2 px-2 text-right">มูลค่าคงเหลือ</th>';
+  html += '<th class="py-2 px-2 text-right" title="สัดส่วนเทียบผลรวมเฉพาะบัญชีที่ยอดเป็นบวก">% ของเงินที่มี</th>';
+  html += '<th class="py-2 px-2 text-right">รายจ่ายในช่วง</th>';
+  html += '<th class="py-2 px-2 text-right">% ของรายจ่าย</th>';
+  html += '<th class="py-2 px-2 text-right">เฉลี่ย/เดือน</th>';
+  html += '<th class="py-2 px-2 text-right">ไหลออก/เดือน</th>';
+  html += '<th class="py-2 px-2 text-right">อยู่ได้อีก</th>';
+  html += '<th class="py-2 pl-2">สถานะ</th>';
+  html += '</tr></thead><tbody>';
+  for (const s of stats) {
+    const valPct = totals.positive > 0 ? (Math.max(0, s.balance) / totals.positive * 100) : 0;
+    const expPct = totals.expense > 0 ? (s.expense / totals.expense * 100) : 0;
+    const isSel = s.name === state.selectedAccount;
+    html += `<tr class="border-b border-slate-100 cursor-pointer transition${isSel ? ' bg-sky-50' : ''}" data-acc="${escapeHtml(s.name)}">`;
+    html += '<td class="py-1.5 pr-3 font-medium">' + escapeHtml(s.name) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums font-semibold ' + (s.balance >= 0 ? 'text-brand' : 'text-expense') + '">' + fmtTHB.format(s.balance) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums">' + (s.balance > 0 ? valPct.toFixed(1) + '%' : '-') + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums text-expense">' + fmtTHB.format(s.expense) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums">' + expPct.toFixed(1) + '%</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums">' + fmtTHB.format(s.avgMonth) + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums">' + (isFinite(s.burnPct) ? s.burnPct.toFixed(1) + '%' : '—') + '</td>';
+    html += '<td class="py-1.5 px-2 text-right tabular-nums font-semibold">' + runwayText(s.runway) + '</td>';
+    html += `<td class="py-1.5 pl-2"><span class="text-xs px-2 py-0.5 rounded-full ${s.health.badge}">${s.health.emoji} ${s.health.label}</span></td>`;
+    html += '</tr>';
+  }
+  html += '</tbody><tfoot><tr class="border-t-2 border-slate-300 font-bold bg-slate-50">';
+  html += '<td class="py-2 pr-3">รวมทุกบัญชี</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums ' + (totals.balance >= 0 ? 'text-brand' : 'text-expense') + '">' + fmtTHB.format(totals.balance) + '</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums">100.0%</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums text-expense">' + fmtTHB.format(totals.expense) + '</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums">100.0%</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums">' + fmtTHB.format(totals.avgMonth) + '</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums">' + (totals.balance > 0 ? (totals.avgMonth / totals.balance * 100).toFixed(1) + '%' : '—') + '</td>';
+  html += '<td class="py-2 px-2 text-right tabular-nums">' + runwayText(totals.runway) + '</td>';
+  html += `<td class="py-2 pl-2"><span class="text-xs px-2 py-0.5 rounded-full ${totals.health.badge}">${totals.health.emoji} ${totals.health.label}</span></td>`;
+  html += '</tr></tfoot>';
+  const table = document.getElementById('accountValueTable');
+  table.innerHTML = html;
+  table.querySelectorAll('tr[data-acc]').forEach(row => {
+    row.addEventListener('click', () => {
+      renderAccountValueDetail(row.dataset.acc);
+      table.querySelectorAll('tr[data-acc]').forEach(r => r.classList.toggle('bg-sky-50', r === row));
+    });
+  });
+
+  /* ---------- สรุป + insight ---------- */
+  const negCount = stats.filter(s => s.balance < 0).length;
+  document.getElementById('accountValueSummary').innerHTML =
+    `📌 มูลค่ารวม <b>${fmtTHB.format(totals.balance)}</b> ณ ${escapeHtml(asOfText)} · ` +
+    `รายจ่ายเฉลี่ย <b>${fmtTHB.format(totals.avgMonth)}</b>/เดือน · ` +
+    `ที่อัตรานี้เงินทั้งหมดอยู่ได้อีก <b>${runwayText(totals.runway)}</b>` +
+    (negCount > 0 ? ` · <span class="text-slate-400">คอลัมน์ "% ของเงินที่มี" คิดจากผลรวมบัญชีที่ยอดเป็นบวก (${fmtTHB.format(totals.positive)}) — ${negCount} บัญชีที่ติดลบถือเป็นหนี้ ไม่นับเป็นมูลค่า</span>` : '') +
+    ` · <span class="text-slate-400">คิดจากรายการที่บันทึกไว้เท่านั้น ถ้าใน Money Lover ตั้งยอดยกมาไว้ ตัวเลขจะต่างจากในแอป</span>`;
+  document.getElementById('accountValueInsights').innerHTML =
+    accountValueInsights(stats, totals).map(t => '<li>' + t + '</li>').join('');
+
+  if (state.selectedAccount && stats.some(s => s.name === state.selectedAccount)) {
+    renderAccountValueDetail(state.selectedAccount, { scroll: false, stats });
+  }
+}
+
+// คำอธิบายภาษาคน — บอกว่าตัวเลขในตารางแปลว่าอะไร ควรทำอะไรต่อ
+function accountValueInsights(stats, totals) {
+  const out = [];
+  const risky = stats.filter(s => s.health.rank >= 1 && s.health.rank <= 2).sort((a, b) => a.runway - b.runway);
+  if (risky.length) {
+    const r = risky[0];
+    out.push(`⚠️ <b>${escapeHtml(r.name)}</b> ใช้เงินเร็วกว่าที่มี — เหลือ ${fmtTHB.format(r.balance)} แต่จ่ายเฉลี่ย ${fmtTHB.format(r.avgMonth)}/เดือน อยู่ได้อีกราว <b>${runwayText(r.runway)}</b>` +
+      (risky.length > 1 ? ` <span class="text-slate-400">(และอีก ${risky.length - 1} บัญชีที่อยู่ในระดับเดียวกัน)</span>` : ''));
+  }
+  const debt = stats.filter(s => s.balance < 0);
+  if (debt.length) {
+    out.push(`🔴 บัญชีที่ยอดติดลบ: ${debt.map(s => `<b>${escapeHtml(s.name)}</b> (${fmtTHB.format(s.balance)})`).join(' · ')} — ถ้าเป็นบัตรเครดิตคือยอดค้างชำระ ถ้าไม่ใช่แปลว่ายอดยกมาตั้งต้นยังไม่ได้บันทึก`);
+  }
+  // เงินกองอยู่เฉยๆ = มูลค่าสูงแต่แทบไม่มีรายจ่ายออก
+  const idle = stats.filter(s => s.balance > 0 && s.avgMonth === 0).sort((a, b) => b.balance - a.balance);
+  if (idle.length && totals.positive > 0) {
+    const idleSum = idle.reduce((s, a) => s + a.balance, 0);
+    out.push(`💤 มีเงิน <b>${fmtTHB.format(idleSum)}</b> (${(idleSum / totals.positive * 100).toFixed(1)}% ของเงินที่มี) จอดอยู่ใน ${idle.length} บัญชีที่ไม่มีรายจ่ายออกเลยในช่วงนี้ — เช่น <b>${escapeHtml(idle[0].name)}</b>`);
+  }
+  // บัญชีที่แบกรายจ่ายหนักสุดเทียบกับมูลค่าที่ถืออยู่
+  const active = stats.filter(s => s.balance > 0 && s.avgMonth > 0);
+  if (active.length) {
+    const hot = active.reduce((a, b) => (b.burnPct > a.burnPct ? b : a));
+    out.push(`🔥 บัญชีที่เงินไหลออกเร็วสุดเทียบกับมูลค่าที่มี: <b>${escapeHtml(hot.name)}</b> — จ่ายออกเดือนละ <b>${hot.burnPct.toFixed(1)}%</b> ของยอดคงเหลือ`);
+  }
+  // มูลค่ากระจุกตัวในบัญชีเดียวหรือไม่
+  const topPos = stats.filter(s => s.balance > 0)[0];
+  if (topPos && totals.positive > 0) {
+    const share = topPos.balance / totals.positive * 100;
+    out.push(share >= 70
+      ? `🧺 มูลค่ากระจุกอยู่ที่ <b>${escapeHtml(topPos.name)}</b> ถึง <b>${share.toFixed(1)}%</b> — ถ้าบัญชีนี้มีปัญหาจะกระทบทั้งพอร์ต ลองกระจายไว้หลายที่`
+      : `✅ มูลค่ากระจายหลายบัญชี — บัญชีใหญ่สุด <b>${escapeHtml(topPos.name)}</b> ถือ ${share.toFixed(1)}% ของทั้งหมด`);
+  }
+  // บัญชีที่ใช้จ่ายมากสุด เทียบกับบัญชีที่มีเงินมากสุด
+  const topSpender = [...stats].sort((a, b) => b.expense - a.expense)[0];
+  if (topSpender && topSpender.expense > 0 && topPos && topSpender.name !== topPos.name) {
+    out.push(`🏦 บัญชีที่จ่ายหนักสุดคือ <b>${escapeHtml(topSpender.name)}</b> (${fmtTHB.format(topSpender.expense)}) ซึ่งไม่ใช่บัญชีที่มีเงินมากสุด — เงินไหลออกจากกระเป๋าที่บางกว่า`);
+  }
+  return out;
+}
+
+function renderAccountValueDetail(name, { scroll = true, stats = null } = {}) {
+  state.selectedAccount = name;
+  const sec = document.getElementById('accountValueDetailSection');
+  document.getElementById('accountValueDetailTitle').textContent = name;
+  sec.classList.remove('hidden');
+  if (scroll) sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  const monthKeys = fillMonthGaps([...groupByMonth(state.filtered).keys()]);
+  const balSeries = accountBalanceByMonth(monthKeys).get(name) || monthKeys.map(() => 0);
+  const perMonth = accountExpenseByMonth(state.filtered).get(name) || new Map();
+  const expenses = monthKeys.map(k => perMonth.get(k) || 0);
+
+  renderChart('accountValueDetail', document.getElementById('accountValueDetailChart'), {
+    type: 'bar',
+    data: {
+      labels: monthKeys.map(monthLabel),
+      datasets: [
+        { type: 'bar',  label: 'รายจ่ายในเดือน', data: expenses, backgroundColor: '#e34948', borderRadius: 4, yAxisID: 'y' },
+        { type: 'line', label: 'มูลค่าคงเหลือสิ้นเดือน', data: balSeries, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,.12)', fill: true, tension: .3, pointRadius: 3, borderWidth: 2, yAxisID: 'y1' },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtTHB.format(c.parsed.y) } },
+      },
+      scales: {
+        y:  { position: 'left',  ticks: { callback: (v) => abbrev(v) }, title: { display: true, text: 'รายจ่าย/เดือน' } },
+        y1: { position: 'right', ticks: { callback: (v) => abbrev(v) }, grid: { drawOnChartArea: false }, title: { display: true, text: 'มูลค่าคงเหลือ' } },
+      },
+    },
+  });
+
+  const stat = (stats || buildAccountValueStats().stats).find(s => s.name === name);
+  const first = balSeries.length ? balSeries[0] : 0;
+  const last  = balSeries.length ? balSeries[balSeries.length - 1] : 0;
+  const change = last - first;
+  const dir = change > 0 ? 'เพิ่มขึ้น 📈' : (change < 0 ? 'ลดลง 📉' : 'ทรงตัว');
+  document.getElementById('accountValueDetailSummary').innerHTML = stat
+    ? `มูลค่าคงเหลือ <b>${fmtTHB.format(stat.balance)}</b> · รายจ่ายเฉลี่ย <b>${fmtTHB.format(stat.avgMonth)}</b>/เดือน · ` +
+      `อยู่ได้อีก <b>${runwayText(stat.runway)}</b> · สถานะ ${stat.health.emoji} <b>${stat.health.label}</b> · ` +
+      `ในช่วงที่เลือกมูลค่า${dir} <b>${fmtTHB.format(Math.abs(change))}</b> (${fmtTHB.format(first)} → ${fmtTHB.format(last)})`
+    : '';
 }
 
 /* =========================================================
@@ -2699,6 +3205,12 @@ function setupFilterUI() {
     document.querySelectorAll('#expenseSourceTable tr[data-cat]').forEach(r => r.classList.remove('bg-rose-50'));
   });
 
+  document.getElementById('accountValueDetailClose').addEventListener('click', () => {
+    state.selectedAccount = null;
+    document.getElementById('accountValueDetailSection').classList.add('hidden');
+    document.querySelectorAll('#accountValueTable tr[data-acc]').forEach(r => r.classList.remove('bg-sky-50'));
+  });
+
   document.getElementById('catDetailClose').addEventListener('click', () => {
     state.selectedCategory = null;
     document.getElementById('catDetailSection').classList.add('hidden');
@@ -2734,6 +3246,9 @@ function setDefaults() {
   state.filters.includeCreditPay = false;
   // ข้อมูลชุดใหม่ = ชื่อหมวดอาจไม่เหมือนเดิม ล้างหมวดที่กรองออกจากกราฟทิ้ง
   state.hiddenCats = { overview: new Set(), income: new Set(), expense: new Set() };
+  // ชื่อบัญชีในข้อมูลชุดใหม่อาจไม่มีบัญชีที่เคยเลือกไว้ — ปิด drill-down ทิ้ง
+  state.selectedAccount = null;
+  document.getElementById('accountValueDetailSection').classList.add('hidden');
   document.getElementById('dateFrom').value = localISODate(min);
   document.getElementById('dateTo').value = localISODate(max);
 }
@@ -2765,6 +3280,7 @@ function refresh() {
   if (state.selectedCategory) renderCategoryDetail(state.selectedCategory);
   renderAccountBar();
   renderWeekBar();
+  renderAccountValue();
   renderIncomeSources();
   if (state.selectedIncomeCategory) renderIncomeCategoryDetail(state.selectedIncomeCategory);
   renderExpenseSources();
@@ -2857,6 +3373,15 @@ function buildAISummary() {
   const accs = [...groupByAccount(flow).entries()].slice(0, 6).map(([name, sum]) => {
     return { บัญชี: aliasForAccount(name), รายจ่ายรวม: r100(sum) };
   });
+  // มูลค่าคงเหลือแต่ละบัญชีเทียบรายจ่าย — ให้ AI ตอบเรื่อง "บัญชีไหนเงินจะหมดก่อน" ได้
+  const av = buildAccountValueStats();
+  const accValues = av.stats.slice(0, 8).map(s => ({
+    บัญชี: aliasForAccount(s.name),
+    มูลค่าคงเหลือ: r100(s.balance),
+    รายจ่ายเฉลี่ยต่อเดือน: r100(s.avgMonth),
+    อยู่ได้อีกกี่เดือน: isFinite(s.runway) ? Math.round(s.runway * 10) / 10 : null,
+    สถานะ: s.health.label,
+  }));
   const k = computeKPIs(state.filtered);
 
   // บริบทฟิลเตอร์ที่ผู้ใช้เลือกบนหน้าจอ — ให้ AI ตอบอิงมุมมองเดียวกับที่ผู้ใช้เห็นอยู่
@@ -2868,13 +3393,16 @@ function buildAISummary() {
   };
 
   return {
-    หมายเหตุ: 'ยอดทั้งหมดปัดเศษหลักร้อย (THB) ชื่อบัญชีถูกปิดบังเป็นตัวอักษร ข้อมูลสะท้อนเฉพาะช่วง/ฟิลเตอร์ที่ผู้ใช้เลือกบนหน้าจอ',
+    หมายเหตุ: 'ยอดทั้งหมดปัดเศษหลักร้อย (THB) ชื่อบัญชีถูกปิดบังเป็นตัวอักษร ข้อมูลสะท้อนเฉพาะช่วง/ฟิลเตอร์ที่ผู้ใช้เลือกบนหน้าจอ · มูลค่าบัญชีคำนวณจากผลรวมรายการที่บันทึกไว้ ไม่รวมยอดยกมาที่ไม่ได้บันทึกใน Money Lover',
     ฟิลเตอร์ที่ใช้อยู่: activeFilters,
     ช่วงข้อมูล: months.length ? `${months[0].เดือน} ถึง ${months[months.length - 1].เดือน}` : '-',
     สรุปรายเดือน: months,
     หมวดรายจ่ายสูงสุด: cats,
     แหล่งรายรับหลัก: incs,
     รายจ่ายต่อบัญชี: accs,
+    มูลค่าบัญชีเทียบรายจ่าย: accValues,
+    มูลค่ารวมทุกบัญชี: r100(av.totals.balance),
+    มูลค่ารวมอยู่ได้อีกกี่เดือน: isFinite(av.totals.runway) ? Math.round(av.totals.runway * 10) / 10 : null,
     ตัวชี้วัด: {
       รายรับรวม: r100(k.income), รายจ่ายรวม: r100(k.expense),
       คงเหลือหลังออมลงทุน: r100(k.netAfterSavings),
@@ -3049,6 +3577,7 @@ const CHAT_QUICK_ACTIONS = [
   { label: '🔁 รายจ่ายประจำ',      q: 'ฉันมีรายจ่ายประจำหรือค่าสมาชิกรายเดือนอะไรบ้าง' },
   { label: '💰 แนะนำงบประมาณ',    q: 'ช่วยแนะนำงบประมาณรายเดือนที่เหมาะกับพฤติกรรมการใช้เงินของฉัน' },
   { label: '🎯 อยากเก็บเงิน',      q: 'ถ้าฉันอยากเก็บเงินให้ได้มากขึ้น ควรตัดรายจ่ายส่วนไหน' },
+  { label: '💼 มูลค่าบัญชี',        q: 'ช่วยวิเคราะห์มูลค่าคงเหลือของแต่ละบัญชีเทียบกับรายจ่ายให้หน่อย บัญชีไหนเงินจะหมดก่อน' },
 ];
 
 function chatRenderQuick() {
