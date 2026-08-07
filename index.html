@@ -367,6 +367,45 @@
     </div>
   </section>
 
+  <!-- Account Value vs Expense -->
+  <section class="card p-5 mb-6" data-card="account-value" data-card-label="มูลค่าบัญชี & เทียบรายจ่าย">
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">💼 มูลค่าบัญชี & วิเคราะห์เทียบรายจ่าย</h2><i class="info-btn" data-tip="ประเมิน &quot;มูลค่า&quot; (เงินคงเหลือ) ของแต่ละบัญชี แล้วเทียบกับรายจ่ายที่ออกจากบัญชีนั้น เพื่อตอบว่าบัญชีไหนมีเงินหนา บัญชีไหนถูกใช้หนัก และเงินในแต่ละบัญชีจะอยู่ได้อีกนานแค่ไหน">i</i></div>
+      <div class="text-xs text-slate-500">มูลค่าบัญชี = ผลรวมทุกรายการของบัญชีนั้นตั้งแต่รายการแรก ถึงวันสุดท้ายของช่วงที่เลือก</div>
+    </div>
+    <div id="accountValueKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+    <div class="grid lg:grid-cols-2 gap-6 mb-4">
+      <div>
+        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">⚖️ มูลค่าคงเหลือ vs รายจ่ายเฉลี่ย/เดือน</h3><i class="info-btn" data-tip="แท่งน้ำเงิน = เงินที่เหลืออยู่ในบัญชี · แท่งแดง = รายจ่ายเฉลี่ยต่อเดือนที่ออกจากบัญชีนั้น ถ้าแท่งแดงยาวใกล้หรือเกินแท่งน้ำเงิน แปลว่าบัญชีนั้นใช้เงินเร็วกว่าที่มีอยู่">i</i></div>
+        <div class="relative h-80"><canvas id="accountValueBar"></canvas></div>
+      </div>
+      <div>
+        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">📈 มูลค่าบัญชีสิ้นเดือน (ย้อนหลัง)</h3><i class="info-btn" data-tip="เส้นแสดงยอดคงเหลือของแต่ละบัญชี ณ สิ้นเดือน (สะสมต่อเนื่องจากรายการแรกสุด) เส้นประดำ = มูลค่ารวมทุกบัญชี ใช้ดูว่ามูลค่ากำลังโตขึ้นหรือถูกกินลงเรื่อยๆ">i</i></div>
+        <div class="relative h-80"><canvas id="accountValueTrend"></canvas></div>
+      </div>
+    </div>
+    <div class="mb-4">
+      <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">⏳ เงินในบัญชีอยู่ได้อีกกี่เดือน (Runway)</h3><i class="info-btn" data-tip="Runway = มูลค่าคงเหลือ ÷ รายจ่ายเฉลี่ยต่อเดือนของบัญชีนั้น สีเขียว = เกิน 6 เดือน · เหลือง = 3–6 เดือน · ส้ม = 1–3 เดือน · แดง = ไม่ถึง 1 เดือน แท่งถูกตัดที่ 36 เดือนเพื่อให้อ่านง่าย">i</i></div>
+      <div id="accountRunwayWrap" class="relative h-64"><canvas id="accountRunwayBar"></canvas></div>
+      <p id="accountRunwayNote" class="text-sm text-slate-500 py-6 hidden"></p>
+    </div>
+    <div class="overflow-x-auto">
+      <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">📋 ตารางเปรียบเทียบรายบัญชี</h3><i class="info-btn" data-tip="สรุปทุกตัวเลขของแต่ละบัญชีในตารางเดียว คลิ๊กที่แถวเพื่อดูกราฟมูลค่าและรายจ่ายรายเดือนของบัญชีนั้น">i</i></div>
+      <table class="tbl w-full text-sm" id="accountValueTable"></table>
+    </div>
+    <p id="accountValueSummary" class="text-sm text-slate-600 mt-3"></p>
+    <ul id="accountValueInsights" class="mt-2 space-y-1.5 text-sm"></ul>
+    <!-- Account Detail -->
+    <div id="accountValueDetailSection" class="hidden mt-4 pt-4 border-t border-slate-100">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h3 class="text-sm font-semibold text-slate-700">🔍 <span id="accountValueDetailTitle">บัญชี</span> — มูลค่าคงเหลือ vs รายจ่ายรายเดือน</h3>
+        <button id="accountValueDetailClose" class="text-xs text-slate-400 hover:text-slate-700 px-2 py-1 rounded border border-slate-200 hover:border-slate-400 transition">✕ ปิด</button>
+      </div>
+      <div class="relative h-64"><canvas id="accountValueDetailChart"></canvas></div>
+      <div id="accountValueDetailSummary" class="text-sm text-slate-600 mt-2"></div>
+    </div>
+  </section>
+
   <!-- KPI Cards -->
   <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6" id="kpiGrid" data-card="kpi" data-card-label="ตัวชี้วัด (KPI)"></section>
 
@@ -414,45 +453,6 @@
     <div class="card p-5">
       <div class="flex items-center gap-1.5 mb-3"><h2 class="text-lg font-semibold">📅 รายจ่ายแยกตามสัปดาห์</h2><i class="info-btn" data-tip="รวมรายจ่ายแต่ละสัปดาห์ตามปฏิทิน (เริ่มวันจันทร์) X-axis คือวันเริ่มต้นสัปดาห์ ใช้ดูสัปดาห์ที่มีการใช้จ่ายสูงผิดปกติ">i</i></div>
       <div class="relative h-72"><canvas id="dowBar"></canvas></div>
-    </div>
-  </section>
-
-  <!-- Account Value vs Expense -->
-  <section class="card p-5 mb-6" data-card="account-value" data-card-label="มูลค่าบัญชี & เทียบรายจ่าย">
-    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <div class="flex items-center gap-1.5"><h2 class="text-lg font-semibold">💼 มูลค่าบัญชี & วิเคราะห์เทียบรายจ่าย</h2><i class="info-btn" data-tip="ประเมิน &quot;มูลค่า&quot; (เงินคงเหลือ) ของแต่ละบัญชี แล้วเทียบกับรายจ่ายที่ออกจากบัญชีนั้น เพื่อตอบว่าบัญชีไหนมีเงินหนา บัญชีไหนถูกใช้หนัก และเงินในแต่ละบัญชีจะอยู่ได้อีกนานแค่ไหน">i</i></div>
-      <div class="text-xs text-slate-500">มูลค่าบัญชี = ผลรวมทุกรายการของบัญชีนั้นตั้งแต่รายการแรก ถึงวันสุดท้ายของช่วงที่เลือก</div>
-    </div>
-    <div id="accountValueKpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
-    <div class="grid lg:grid-cols-2 gap-6 mb-4">
-      <div>
-        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">⚖️ มูลค่าคงเหลือ vs รายจ่ายเฉลี่ย/เดือน</h3><i class="info-btn" data-tip="แท่งน้ำเงิน = เงินที่เหลืออยู่ในบัญชี · แท่งแดง = รายจ่ายเฉลี่ยต่อเดือนที่ออกจากบัญชีนั้น ถ้าแท่งแดงยาวใกล้หรือเกินแท่งน้ำเงิน แปลว่าบัญชีนั้นใช้เงินเร็วกว่าที่มีอยู่">i</i></div>
-        <div class="relative h-80"><canvas id="accountValueBar"></canvas></div>
-      </div>
-      <div>
-        <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">📈 มูลค่าบัญชีสิ้นเดือน (ย้อนหลัง)</h3><i class="info-btn" data-tip="เส้นแสดงยอดคงเหลือของแต่ละบัญชี ณ สิ้นเดือน (สะสมต่อเนื่องจากรายการแรกสุด) เส้นประดำ = มูลค่ารวมทุกบัญชี ใช้ดูว่ามูลค่ากำลังโตขึ้นหรือถูกกินลงเรื่อยๆ">i</i></div>
-        <div class="relative h-80"><canvas id="accountValueTrend"></canvas></div>
-      </div>
-    </div>
-    <div class="mb-4">
-      <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">⏳ เงินในบัญชีอยู่ได้อีกกี่เดือน (Runway)</h3><i class="info-btn" data-tip="Runway = มูลค่าคงเหลือ ÷ รายจ่ายเฉลี่ยต่อเดือนของบัญชีนั้น สีเขียว = เกิน 6 เดือน · เหลือง = 3–6 เดือน · ส้ม = 1–3 เดือน · แดง = ไม่ถึง 1 เดือน แท่งถูกตัดที่ 36 เดือนเพื่อให้อ่านง่าย">i</i></div>
-      <div id="accountRunwayWrap" class="relative h-64"><canvas id="accountRunwayBar"></canvas></div>
-      <p id="accountRunwayNote" class="text-sm text-slate-500 py-6 hidden"></p>
-    </div>
-    <div class="overflow-x-auto">
-      <div class="flex items-center gap-1.5 mb-2"><h3 class="text-sm font-semibold text-slate-600">📋 ตารางเปรียบเทียบรายบัญชี</h3><i class="info-btn" data-tip="สรุปทุกตัวเลขของแต่ละบัญชีในตารางเดียว คลิ๊กที่แถวเพื่อดูกราฟมูลค่าและรายจ่ายรายเดือนของบัญชีนั้น">i</i></div>
-      <table class="tbl w-full text-sm" id="accountValueTable"></table>
-    </div>
-    <p id="accountValueSummary" class="text-sm text-slate-600 mt-3"></p>
-    <ul id="accountValueInsights" class="mt-2 space-y-1.5 text-sm"></ul>
-    <!-- Account Detail -->
-    <div id="accountValueDetailSection" class="hidden mt-4 pt-4 border-t border-slate-100">
-      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h3 class="text-sm font-semibold text-slate-700">🔍 <span id="accountValueDetailTitle">บัญชี</span> — มูลค่าคงเหลือ vs รายจ่ายรายเดือน</h3>
-        <button id="accountValueDetailClose" class="text-xs text-slate-400 hover:text-slate-700 px-2 py-1 rounded border border-slate-200 hover:border-slate-400 transition">✕ ปิด</button>
-      </div>
-      <div class="relative h-64"><canvas id="accountValueDetailChart"></canvas></div>
-      <div id="accountValueDetailSummary" class="text-sm text-slate-600 mt-2"></div>
     </div>
   </section>
 
@@ -3902,17 +3902,35 @@ function saveLocalCardOrder(order) {
   try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(order)); } catch (e) {}
 }
 
-/* จัดเรียง DOM ให้ตรงกับลำดับที่กำหนด — การ์ดที่ไม่อยู่ในลำดับ (เช่นเพิ่มใหม่ภายหลัง)
-   จะถูกต่อท้ายตามลำดับเริ่มต้น */
+/* รวมลำดับที่ผู้ใช้บันทึกไว้เข้ากับลำดับเริ่มต้น
+ * การ์ดที่เพิ่มเข้ามาทีหลังจะไม่อยู่ในลำดับที่บันทึกไว้ ถ้าต่อท้ายไปเฉยๆ การ์ดใหม่จะไปโผล่ล่างสุด
+ * เสมอ แม้ตำแหน่งเริ่มต้นจะอยู่บนสุดก็ตาม → แทรกไว้หลังการ์ดที่อยู่ก่อนหน้ามันในลำดับเริ่มต้นแทน
+ * (ถ้าเป็นการ์ดแรกของลำดับเริ่มต้น ก็ได้อยู่บนสุดตามเจตนา)
+ */
+function mergeCardOrder(saved) {
+  const known = new Set(DEFAULT_CARD_ORDER);
+  const out = [];
+  const seen = new Set();
+  (saved || []).forEach(id => { if (known.has(id) && !seen.has(id)) { out.push(id); seen.add(id); } });
+  for (const id of DEFAULT_CARD_ORDER) {
+    if (seen.has(id)) continue;
+    let at = 0;
+    for (let i = DEFAULT_CARD_ORDER.indexOf(id) - 1; i >= 0; i--) {
+      const p = out.indexOf(DEFAULT_CARD_ORDER[i]);
+      if (p >= 0) { at = p + 1; break; }
+    }
+    out.splice(at, 0, id);
+    seen.add(id);
+  }
+  return out;
+}
+
+/* จัดเรียง DOM ให้ตรงกับลำดับที่กำหนด */
 function applyCardOrder(order) {
   const app = layoutApp();
   const anchor = app.querySelector(':scope > footer');
   const byId = new Map(layoutCards().map(c => [c.dataset.card, c]));
-  const seen = new Set();
-  const seq = [];
-  (order || []).forEach(id => { if (byId.has(id) && !seen.has(id)) { seq.push(byId.get(id)); seen.add(id); } });
-  DEFAULT_CARD_ORDER.forEach(id => { if (byId.has(id) && !seen.has(id)) { seq.push(byId.get(id)); seen.add(id); } });
-  seq.forEach(el => app.insertBefore(el, anchor));
+  mergeCardOrder(order).forEach(id => { if (byId.has(id)) app.insertBefore(byId.get(id), anchor); });
 }
 
 function persistCardOrder() {
